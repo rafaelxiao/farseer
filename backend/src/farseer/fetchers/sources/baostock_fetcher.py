@@ -1,18 +1,7 @@
 """
 baostock data source fetcher.
 
-baostock adjustflag:
-- 1 (不复权): Cumulative value, NOT actual prices
-- 2 (后复权): Backward adjusted
-- 3 (前复权): Forward adjusted
-
-Problem: baostock doesn't give actual trading prices directly.
-Solution: Store forward-adjusted prices with backward_factor=1.0 (already normalized).
-
-Note: baostock data is forward-adjusted, so for API:
-- original: forward-adjusted (what baostock gives)
-- forward: same as original (factor=1.0)
-- backward: price / factor (but we don't have actual prices)
+Fetches FULL history from IPO to get correct backward_factors.
 """
 
 import asyncio
@@ -52,7 +41,9 @@ class BaostockFetcher(BaseFetcher):
 
         bs_symbol = SymbolConverter.to_baostock(symbol)
         frequency = TIMEFRAME_MAP.get(timeframe, "d")
-        start_date = start[:10] if start else "1990-01-01"
+
+        # Always fetch from IPO to get correct backward_factors
+        start_date = "1990-01-01"  # Before any A-share existed
         end_date = end[:10] if end else datetime.now().strftime("%Y-%m-%d")
         fields = "date,open,high,low,close,volume,amount"
 
@@ -61,23 +52,52 @@ class BaostockFetcher(BaseFetcher):
             raise Exception(f"baostock login failed: {rs.error_msg}")
 
         try:
+            # Fetch raw prices (不复权) - for calculating factors
+            rs_raw = bs.query_history_k_data_plus(
+                bs_symbol, fields, start_date, end_date, frequency, adjustflag="1",
+            )
+            raw_rows = []
+            while rs_raw.next():
+                raw_rows.append(rs_raw.get_row_data())
+
             # Fetch forward-adjusted prices (前复权)
-            # These are the most useful for backtesting
-            result = bs.query_history_k_data_plus(
+            rs_fwd = bs.query_history_k_data_plus(
                 bs_symbol, fields, start_date, end_date, frequency, adjustflag="3",
             )
+            fwd_rows = []
+            while rs_fwd.next():
+                fwd_rows.append(rs_fwd.get_row_data())
+
+            if not raw_rows or not fwd_rows:
+                return []
+
+            # Calculate backward_factors
+            # backward_factor = forward_factor / forward_factor_first
+            # Where forward_factor = fwd_close / raw_close
+            first_raw_close = float(raw_rows[0][4]) if raw_rows[0][4] else 1.0
+            first_fwd_close = float(fwd_rows[0][4]) if fwd_rows[0][4] else 1.0
+            first_forward_factor = first_fwd_close / first_raw_close if first_raw_close else 1.0
 
             records = []
-            while result.next():
-                row = result.get_row_data()
+            for raw, fwd in zip(raw_rows, fwd_rows):
+                raw_close = float(raw[4]) if raw[4] else 0
+                fwd_close = float(fwd[4]) if fwd[4] else 0
+
+                # Current forward factor
+                forward_factor = fwd_close / raw_close if raw_close > 0 else 1.0
+
+                # Backward factor: normalized so first date = 1.0
+                backward_factor = forward_factor / first_forward_factor if first_forward_factor else 1.0
+
                 records.append({
-                    "date": row[0],
-                    "open": float(row[1]) if row[1] else 0,
-                    "high": float(row[2]) if row[2] else 0,
-                    "low": float(row[3]) if row[3] else 0,
-                    "close": float(row[4]) if row[4] else 0,
-                    "volume": int(float(row[5])) if row[5] else 0,
-                    "amount": float(row[6]) if row[6] else 0,
+                    "date": fwd[0],
+                    "open": float(fwd[1]) if fwd[1] else 0,
+                    "high": float(fwd[2]) if fwd[2] else 0,
+                    "low": float(fwd[3]) if fwd[3] else 0,
+                    "close": fwd_close,
+                    "volume": int(float(fwd[5])) if fwd[5] else 0,
+                    "amount": float(fwd[6]) if fwd[6] else 0,
+                    "backward_factor": round(backward_factor, 10),
                 })
 
             return records
@@ -101,8 +121,6 @@ class BaostockFetcher(BaseFetcher):
 
         records = []
         for row in raw_records:
-            # baostock returns forward-adjusted prices
-            # Store with backward_factor=1.0 (prices already normalized)
             record = OHLCBase(
                 symbol=symbol,
                 timeframe=timeframe,
@@ -112,8 +130,8 @@ class BaostockFetcher(BaseFetcher):
                 low=row["low"],
                 close=row["close"],
                 volume=row["volume"],
-                backward_factor=1.0,  # Forward-adjusted, normalized
-                data={"amount": row["amount"], "source_note": "forward_adjusted"},
+                backward_factor=row["backward_factor"],
+                data={"amount": row["amount"]},
             )
             records.append(record)
 

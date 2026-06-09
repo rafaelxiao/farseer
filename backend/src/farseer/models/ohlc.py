@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import BigInteger, DateTime, Numeric, String, func
+from sqlalchemy import BigInteger, DateTime, Index, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from farseer.database import Base
@@ -15,8 +15,21 @@ class OHLC(TimestampMixin, Base):
     timeframe: Mapped[str] = mapped_column(String(10), nullable=False, index=True)  # 1m, 5m, 1h, 1d, etc.
     timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
 
+    # Core OHLC
     open: Mapped[float] = mapped_column(Numeric(18, 8), nullable=False)
     high: Mapped[float] = mapped_column(Numeric(18, 8), nullable=False)
     low: Mapped[float] = mapped_column(Numeric(18, 8), nullable=False)
     close: Mapped[float] = mapped_column(Numeric(18, 8), nullable=False)
     volume: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+
+    # Adjustments
+    adjusted_close: Mapped[float | None] = mapped_column(Numeric(18, 8), nullable=True)
+    split_factor: Mapped[float | None] = mapped_column(Numeric(12, 8), nullable=True, default=1.0)
+    dividend_amount: Mapped[float | None] = mapped_column(Numeric(12, 8), nullable=True, default=0)
+
+    # Flexible extra data (VWAP, turnover, bid/ask, etc.)
+    data: Mapped[str | None] = mapped_column(Text, nullable=True, default="{}")  # JSON
+
+    __table_args__ = (
+        Index("ix_ohlc_symbol_timeframe_timestamp", "symbol", "timeframe", "timestamp", unique=True),
+    )

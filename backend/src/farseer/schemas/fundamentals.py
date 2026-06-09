@@ -6,16 +6,8 @@ from pydantic import BaseModel
 class FundamentalsBase(BaseModel):
     symbol: str
     date: date
-    pe_ratio: float | None = None
-    pb_ratio: float | None = None
-    market_cap: float | None = None
-    revenue: float | None = None
-    net_income: float | None = None
-    eps: float | None = None
-    dividend_yield: float | None = None
-    sector: str | None = None
-    industry: str | None = None
-    extra: str | None = None
+    category: str | None = None
+    data: dict = {}  # Any fields you want: {"pe_ratio": 15.2, "revenue": 1000000, ...}
 
 
 class FundamentalsOut(FundamentalsBase):
@@ -28,7 +20,7 @@ class FundamentalsOut(FundamentalsBase):
 
 class FundamentalsQuery(BaseModel):
     symbol: str | None = None
-    sector: str | None = None
+    category: str | None = None
     start_date: date | None = None
     end_date: date | None = None
     limit: int = 100

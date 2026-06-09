@@ -8,6 +8,10 @@ export interface OHLC {
   low: number
   close: number
   volume: number
+  adjusted_close: number | null
+  split_factor: number | null
+  dividend_amount: number | null
+  data: Record<string, any>  // Extra: vwap, turnover, etc.
   created_at: string
   updated_at: string
 }
@@ -16,16 +20,8 @@ export interface Fundamentals {
   id: number
   symbol: string
   date: string
-  pe_ratio: number | null
-  pb_ratio: number | null
-  market_cap: number | null
-  revenue: number | null
-  net_income: number | null
-  eps: number | null
-  dividend_yield: number | null
-  sector: string | null
-  industry: string | null
-  extra: string | null
+  category: string | null
+  data: Record<string, any>
   created_at: string
   updated_at: string
 }

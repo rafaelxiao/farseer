@@ -1,4 +1,5 @@
-from datetime import date, datetime
+import json
+from datetime import date
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,7 +15,7 @@ class FundamentalsService:
     async def get_fundamentals(
         self,
         symbol: str | None = None,
-        sector: str | None = None,
+        category: str | None = None,
         start_date: str | None = None,
         end_date: str | None = None,
         limit: int = 100,
@@ -23,8 +24,8 @@ class FundamentalsService:
 
         if symbol:
             query = query.where(Fundamentals.symbol == symbol)
-        if sector:
-            query = query.where(Fundamentals.sector == sector)
+        if category:
+            query = query.where(Fundamentals.category == category)
         if start_date:
             query = query.where(Fundamentals.date >= date.fromisoformat(start_date))
         if end_date:
@@ -34,7 +35,12 @@ class FundamentalsService:
         return list(result.scalars().all())
 
     async def create_fundamentals(self, data: FundamentalsBase) -> Fundamentals:
-        fund = Fundamentals(**data.model_dump())
+        fund = Fundamentals(
+            symbol=data.symbol,
+            date=data.date,
+            category=data.category,
+            data=json.dumps(data.data),
+        )
         self.db.add(fund)
         await self.db.commit()
         await self.db.refresh(fund)

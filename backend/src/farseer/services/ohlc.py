@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 
 from sqlalchemy import select
@@ -35,14 +36,43 @@ class OHLCService:
         return list(result.scalars().all())
 
     async def create_ohlc(self, data: OHLCBase) -> OHLC:
-        ohlc = OHLC(**data.model_dump())
+        ohlc = OHLC(
+            symbol=data.symbol,
+            timeframe=data.timeframe,
+            timestamp=data.timestamp,
+            open=data.open,
+            high=data.high,
+            low=data.low,
+            close=data.close,
+            volume=data.volume,
+            adjusted_close=data.adjusted_close,
+            split_factor=data.split_factor,
+            dividend_amount=data.dividend_amount,
+            data=json.dumps(data.data) if data.data else "{}",
+        )
         self.db.add(ohlc)
         await self.db.commit()
         await self.db.refresh(ohlc)
         return ohlc
 
     async def create_ohlc_batch(self, items: list[OHLCBase]) -> list[OHLC]:
-        ohlc_list = [OHLC(**item.model_dump()) for item in items]
+        ohlc_list = [
+            OHLC(
+                symbol=item.symbol,
+                timeframe=item.timeframe,
+                timestamp=item.timestamp,
+                open=item.open,
+                high=item.high,
+                low=item.low,
+                close=item.close,
+                volume=item.volume,
+                adjusted_close=item.adjusted_close,
+                split_factor=item.split_factor,
+                dividend_amount=item.dividend_amount,
+                data=json.dumps(item.data) if item.data else "{}",
+            )
+            for item in items
+        ]
         self.db.add_all(ohlc_list)
         await self.db.commit()
         for ohlc in ohlc_list:

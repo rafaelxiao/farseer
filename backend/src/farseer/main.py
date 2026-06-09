@@ -7,6 +7,9 @@ from farseer.api.v1.router import router as v1_router
 from farseer.config import settings
 from farseer.scheduler.runner import start_scheduler, shutdown_scheduler
 
+# Import to register fetchers
+import farseer.fetchers.sources  # noqa: F401
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

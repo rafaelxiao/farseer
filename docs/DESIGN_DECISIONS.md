@@ -35,6 +35,22 @@ Features:
 | Package Manager | Bun |
 | Server State | TanStack Query |
 
+### 2026-06-09 — Symbol System
+
+| Decision | Choice |
+|----------|--------|
+| Format | `{CODE}.{EXCHANGE}` (e.g. `600519.SH`) |
+| Exchanges | `.SH` (Shanghai), `.SZ` (Shenzhen), `.HK` (Hong Kong), `.US` (optional) |
+| Conversion | Each source has converter for its format |
+
+### 2026-06-09 — Data Sources
+
+| Source | Status | Notes |
+|--------|--------|-------|
+| yfinance | ✅ Implemented | US, HK, A-shares (.SS/.SZ) |
+| baostock | ✅ Implemented | Free A-share data |
+| tushare | Planned | Popular, rate-limited free tier |
+
 ---
 
 ## Tech Stack

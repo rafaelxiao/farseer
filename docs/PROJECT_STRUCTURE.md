@@ -10,149 +10,115 @@ farseer/
 │   ├── src/
 │   │   └── farseer/
 │   │       ├── __init__.py
-│   │       ├── main.py                  # FastAPI app, lifespan, middleware
-│   │       ├── config.py                # Pydantic Settings
-│   │       ├── database.py              # Engine, session factory, Base
+│   │       ├── main.py
+│   │       ├── config.py
+│   │       ├── database.py
 │   │       │
-│   │       ├── models/                  # SQLAlchemy models
-│   │       │   ├── __init__.py
-│   │       │   ├── base.py              # Timestamps, common mixins
-│   │       │   ├── ohlc.py
-│   │       │   ├── fundamentals.py
-│   │       │   └── task.py              # Task/job records
-│   │       │
-│   │       ├── schemas/                 # Pydantic schemas
-│   │       │   ├── __init__.py
+│   │       ├── models/
+│   │       │   ├── base.py
 │   │       │   ├── ohlc.py
 │   │       │   ├── fundamentals.py
 │   │       │   └── task.py
 │   │       │
-│   │       ├── api/                     # Route handlers
-│   │       │   ├── __init__.py
-│   │       │   ├── deps.py              # Shared dependencies (get_db)
-│   │       │   └── v1/
-│   │       │       ├── __init__.py
-│   │       │       ├── router.py
-│   │       │       ├── ohlc.py          # GET/POST OHLC data
-│   │       │       ├── fundamentals.py  # GET/POST fundamentals
-│   │       │       └── tasks.py         # GET tasks, POST trigger
+│   │       ├── schemas/
+│   │       │   ├── ohlc.py
+│   │       │   ├── fundamentals.py
+│   │       │   └── task.py
 │   │       │
-│   │       ├── services/                # Business logic
-│   │       │   ├── __init__.py
+│   │       ├── api/
+│   │       │   ├── deps.py
+│   │       │   └── v1/
+│   │       │       ├── router.py
+│   │       │       ├── ohlc.py
+│   │       │       ├── fundamentals.py
+│   │       │       └── tasks.py
+│   │       │
+│   │       ├── services/
 │   │       │   ├── ohlc.py
 │   │       │   └── fundamentals.py
 │   │       │
-│   │       ├── fetchers/                # Data source fetchers
-│   │       │   ├── __init__.py
-│   │       │   ├── base.py              # Abstract base fetcher
-│   │       │   └── example.py           # Example fetcher (Yahoo, etc.)
+│   │       ├── symbols/              # Symbol system
+│   │       │   ├── formats.py        # Canonical format: {CODE}.{EXCHANGE}
+│   │       │   └── converter.py      # Convert between source formats
 │   │       │
-│   │       ├── scheduler/               # Task scheduling
-│   │       │   ├── __init__.py
-│   │       │   ├── runner.py            # APScheduler setup
-│   │       │   └── jobs.py              # Job definitions
+│   │       ├── fetchers/             # Data source fetchers
+│   │       │   ├── base.py           # BaseFetcher abstract class
+│   │       │   ├── registry.py       # FetcherRegistry
+│   │       │   └── sources/
+│   │       │       ├── yfinance_fetcher.py
+│   │       │       └── baostock_fetcher.py
+│   │       │
+│   │       ├── scheduler/
+│   │       │   ├── runner.py
+│   │       │   └── jobs.py
 │   │       │
 │   │       └── utils/
-│   │           └── __init__.py
 │   │
 │   ├── tests/
-│   │   ├── conftest.py
-│   │   ├── api/
-│   │   │   └── v1/
-│   │   └── services/
-│   │
 │   ├── migrations/
-│   │   ├── env.py
-│   │   └── versions/
-│   │
-│   ├── alembic.ini
 │   ├── pyproject.toml
 │   └── uv.lock
 │
 ├── frontend/
 │   ├── src/
-│   │   ├── main.tsx
-│   │   ├── App.tsx
-│   │   │
-│   │   ├── api/                         # API client
-│   │   │   ├── client.ts
-│   │   │   ├── ohlc.ts
-│   │   │   ├── fundamentals.ts
-│   │   │   └── tasks.ts
-│   │   │
+│   │   ├── api/
 │   │   ├── components/
-│   │   │   ├── ui/                      # shadcn/ui
-│   │   │   └── layout/                  # Shell, sidebar
-│   │   │
-│   │   ├── pages/                       # Route pages
-│   │   │   ├── Dashboard.tsx
-│   │   │   ├── OHLCViewer.tsx
-│   │   │   ├── FundamentalsViewer.tsx
-│   │   │   └── Tasks.tsx
-│   │   │
+│   │   ├── pages/
 │   │   ├── hooks/
 │   │   ├── lib/
 │   │   └── types/
-│   │
-│   ├── public/
-│   ├── index.html
 │   ├── package.json
 │   └── vite.config.ts
 │
 ├── docker/
 │   ├── docker-compose.yml
-│   └── Dockerfile.backend
+│   ├── docker-compose.dev.yml
+│   ├── docker-compose.prod.yml
+│   └── nginx/
 │
-├── .env.example
-├── .gitignore
+├── scripts/
+│   └── start.sh
+│
+├── .env.dev
+├── .env.prod
 └── README.md
 ```
 
 ---
 
-## Data Flow
+## Symbol System
 
-```
-                          ┌─────────────────┐
-                          │   Data Sources   │
-                          │  (Yahoo, APIs..) │
-                          └────────┬────────┘
-                                   │
-                          fetchers/ │
-                                   ▼
-┌──────────┐    POST     ┌─────────────────┐    SQL     ┌─────────────┐
-│ Frontend │ ──────────▶ │   FastAPI API    │ ────────▶ │ PostgreSQL  │
-│ (React)  │ ◀────────── │   (api/v1/)      │ ◀──────── │ TimescaleDB │
-└──────────┘    GET      └────────┬────────┘           └─────────────┘
-                                   │
-                          scheduler/│
-                                   ▼
-                          ┌─────────────────┐
-                          │  APScheduler     │
-                          │  (runs fetchers) │
-                          └─────────────────┘
-```
+**Format:** `{CODE}.{EXCHANGE}`
+
+| Symbol | Exchange | Description |
+|--------|----------|-------------|
+| `600519.SH` | Shanghai | Moutai |
+| `000858.SZ` | Shenzhen | Wuliangye |
+| `0700.HK` | Hong Kong | Tencent |
+| `AAPL` | US | Apple (no suffix) |
+
+**Source Conversions:**
+
+| Source | Format | Example |
+|--------|--------|---------|
+| Farseer | `{CODE}.{EXCHANGE}` | `600519.SH` |
+| yfinance | `{CODE}.SS/.SZ` | `600519.SS` |
+| baostock | `{prefix}.{CODE}` | `sh.600519` |
+| tushare | `{CODE}.{EXCHANGE}` | `600519.SH` (same!) |
 
 ---
 
-## Layer Responsibilities
+## Fetcher Architecture
 
-| Layer | Responsibility |
-|-------|---------------|
-| `models/` | DB table definitions |
-| `schemas/` | Request/response validation |
-| `api/` | HTTP routes, thin handlers |
-| `services/` | Business logic, DB queries |
-| `fetchers/` | Pull data from external sources |
-| `scheduler/` | Cron-like job scheduling |
+```
+BaseFetcher (abstract)
+    ├── YFinanceFetcher
+    ├── BaostockFetcher
+    └── TushareFetcher (future)
+```
 
----
-
-## Frontend Pages
-
-| Page | Purpose |
-|------|---------|
-| Dashboard | Overview, quick stats |
-| OHLC Viewer | Preview OHLC data with filters |
-| Fundamentals Viewer | Preview fundamental data |
-| Tasks | View scheduled jobs, run history, trigger manually |
+Each fetcher:
+1. Implements `_fetch_ohlc()` to get data from source
+2. Converts source symbols to Farseer format
+3. Returns `OHLCBase` records with `adjustor_factor`
+4. Auto-registers with `FetcherRegistry`

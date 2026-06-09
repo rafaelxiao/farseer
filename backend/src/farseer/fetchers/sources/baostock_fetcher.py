@@ -3,6 +3,13 @@ baostock data source fetcher.
 
 Symbol format: 600519.SH -> sh.600519 (baostock uses sh./sz. prefix)
 
+Adjustment:
+- adjustflag=1 (不复权): NOT real prices, cumulative value - DO NOT USE
+- adjustflag=2 (后复权): Backward adjusted - historical prices real, recent adjusted up
+- adjustflag=3 (前复权): Forward adjusted - recent prices real, historical adjusted down
+  → This matches yfinance behavior and real market prices!
+  → Use this with adjustor_factor=1.0 (already adjusted)
+
 Note: baostock is sync, so we run in executor.
 """
 
@@ -47,24 +54,25 @@ class BaostockFetcher(BaseFetcher):
         frequency = TIMEFRAME_MAP.get(timeframe, "d")
 
         # Default dates
-        start_date = start[:10] if start else "2020-01-01"
+        start_date = start[:10] if start else "1990-01-01"
         end_date = end[:10] if end else datetime.now().strftime("%Y-%m-%d")
 
         # Fields to fetch
-        fields = "date,open,high,low,close,volume,amount,adjustflag"
+        fields = "date,open,high,low,close,volume,amount"
 
         rs = bs.login()
         if rs.error_code != '0':
             raise Exception(f"baostock login failed: {rs.error_msg}")
 
         try:
+            # Use forward adjustment (前复权) - matches real market prices
             result = bs.query_history_k_data_plus(
                 bs_symbol,
                 fields,
                 start_date=start_date,
                 end_date=end_date,
                 frequency=frequency,
-                adjustflag="3",  # 3 = forward adjusted
+                adjustflag="3",  # Forward adjusted (前复权)
             )
 
             records = []
@@ -78,7 +86,6 @@ class BaostockFetcher(BaseFetcher):
                     "close": float(row[4]) if row[4] else 0,
                     "volume": int(float(row[5])) if row[5] else 0,
                     "amount": float(row[6]) if row[6] else 0,
-                    "adjustflag": row[7],
                 })
 
             return records
@@ -109,10 +116,8 @@ class BaostockFetcher(BaseFetcher):
         # Convert to OHLCBase
         records = []
         for row in raw_records:
-            # baostock provides forward-adjusted prices
-            # We use adjustor_factor=1.0 since data is already adjusted
-            # For raw data, use adjustflag="1" and calculate factor
-
+            # Prices are already forward-adjusted (前复权)
+            # Factor = 1.0 because prices match real market values
             record = OHLCBase(
                 symbol=symbol,
                 timeframe=timeframe,
@@ -122,7 +127,7 @@ class BaostockFetcher(BaseFetcher):
                 low=row["low"],
                 close=row["close"],
                 volume=row["volume"],
-                adjustor_factor=1.0,  # Already adjusted
+                adjustor_factor=1.0,  # Already forward-adjusted
                 data={"amount": row["amount"]},
             )
             records.append(record)

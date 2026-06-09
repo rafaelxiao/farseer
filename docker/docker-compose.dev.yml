@@ -1,18 +1,21 @@
 version: "3.8"
 
-# Development override - use with: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+# Dev: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
 
 services:
   db:
+    container_name: farseer-db-dev
     ports:
       - "5432:5432"
 
   backend:
+    container_name: farseer-backend-dev
     ports:
-      - "8000:8000"
+      - "8173:8173"
     environment:
       ENVIRONMENT: dev
       DEBUG: "true"
+      PORT: "8173"
+      CORS_ORIGINS: '["http://localhost:5173","http://localhost:5174"]'
     volumes:
-      # Mount source for hot reload
       - ../backend/src:/app/src

@@ -1,11 +1,11 @@
 version: "3.8"
 
+# Base config - extend with docker-compose.dev.yml or docker-compose.prod.yml
+
 services:
   db:
     image: timescale/timescaledb:latest-pg16
     container_name: farseer-db
-    ports:
-      - "5432:5432"
     environment:
       POSTGRES_DB: farseer
       POSTGRES_USER: postgres
@@ -22,9 +22,6 @@ services:
     build:
       context: ../backend
       dockerfile: ../docker/Dockerfile.backend
-    container_name: farseer-backend
-    ports:
-      - "8000:8000"
     environment:
       ENVIRONMENT: ${ENVIRONMENT:-dev}
       DEBUG: ${DEBUG:-true}

@@ -1,17 +1,20 @@
 version: "3.8"
 
-# Production override - use with: docker compose -f docker-compose.yml -f docker-compose.prod.yml up
+# Prod: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
 services:
   db:
-    # Don't expose DB port in production
-    ports: !override []
+    container_name: farseer-db-prod
+    ports:
+      - "5433:5432"
 
   backend:
+    container_name: farseer-backend-prod
     ports:
-      - "80:8000"
+      - "8174:8174"
     environment:
       ENVIRONMENT: prod
       DEBUG: "false"
-      CORS_ORIGINS: ${CORS_ORIGINS:-["http://localhost","http://127.0.0.1"]}
+      PORT: "8174"
+      CORS_ORIGINS: '["http://localhost:5174"]'
     restart: unless-stopped

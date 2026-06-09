@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8173
 
+    # Path prefix (for nginx reverse proxy)
+    root_path: str = ""
+
     # CORS
     cors_origins: list[str] = ["http://localhost:5173", "http://localhost:3000"]
 

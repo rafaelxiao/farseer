@@ -23,6 +23,10 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
     debug=settings.debug,
+    root_path=settings.root_path,
+    openapi_url="/openapi.json",
+    docs_url="/docs",
+    redoc_url="/redoc",
 )
 
 # CORS

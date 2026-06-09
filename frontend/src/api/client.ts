@@ -1,7 +1,15 @@
-const API_BASE = "/api/v1"
+// API base path - adjust based on environment
+const getApiBase = () => {
+  // If served under /farseer/dev/, use that prefix for API calls
+  const base = import.meta.env.BASE_URL || "/"
+  return `${base}api/v1`.replace(/\/+/g, "/")
+}
+
+const API_BASE = getApiBase()
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
+  const url = `${API_BASE}${path}`
+  const res = await fetch(url, {
     headers: {
       "Content-Type": "application/json",
       ...options?.headers,

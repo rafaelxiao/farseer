@@ -1,4 +1,4 @@
-import { Routes, Route } from "react-router-dom"
+import { Routes, Route, useHref, useLocation } from "react-router-dom"
 import Layout from "@/components/layout/Layout"
 import Dashboard from "@/pages/Dashboard"
 import OHLCViewer from "@/pages/OHLCViewer"

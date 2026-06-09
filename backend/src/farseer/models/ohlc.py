@@ -22,9 +22,11 @@ class OHLC(TimestampMixin, Base):
     close: Mapped[float] = mapped_column(Numeric(18, 8), nullable=False)
     volume: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
 
-    # Adjustment factor (incorporates splits, dividends, etc.)
-    # adjusted_price = price * adjustor_factor
-    adjustor_factor: Mapped[float] = mapped_column(Numeric(12, 8), nullable=False, default=1.0)
+    # Backward adjustment factor (后复权)
+    # Stores cumulative adjustment from IPO to this date
+    # - backward_adjusted = actual_price * backward_factor
+    # - forward_adjusted = actual_price * (backward_factor / latest_backward_factor)
+    backward_factor: Mapped[float] = mapped_column(Numeric(18, 10), nullable=False, default=1.0)
 
     # Flexible extra data (VWAP, turnover, bid/ask, etc.)
     data: Mapped[str | None] = mapped_column(Text, nullable=True, default="{}")  # JSON

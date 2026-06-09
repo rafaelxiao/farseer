@@ -12,7 +12,7 @@ class OHLCBase(BaseModel):
     low: float
     close: float
     volume: int = 0
-    adjustor_factor: float = 1.0  # adjusted_price = price * adjustor_factor
+    backward_factor: float = 1.0  # Backward adjustment (后复权): price * factor
     data: dict = {}  # Extra: {"vwap": 150.5, "turnover": 1234567, ...}
 
 
@@ -30,6 +30,7 @@ class OHLCQuery(BaseModel):
     start: datetime | None = None
     end: datetime | None = None
     limit: int = 1000
+    adjust: str = "original"  # "original", "forward", "backward"
 
 
 class OHLCBatchCreate(BaseModel):

@@ -1,20 +1,18 @@
 """
 baostock data source fetcher.
 
-Symbol format: 600519.SH -> sh.600519 (baostock uses sh./sz. prefix)
+baostock adjustflag:
+- 1 (不复权): Cumulative value, NOT actual prices
+- 2 (后复权): Backward adjusted
+- 3 (前复权): Forward adjusted
 
-Adjustment:
-- adjustflag=1 (不复权): Cumulative value, NOT actual prices - DO NOT USE
-- adjustflag=2 (后复权): Backward adjusted
-- adjustflag=3 (前复权): Forward adjusted
+Problem: baostock doesn't give actual trading prices directly.
+Solution: Store forward-adjusted prices with backward_factor=1.0 (already normalized).
 
-Problem: baostock doesn't provide actual trading prices directly.
-Solution: Fetch forward-adjusted prices, calculate factor to get actual.
-
-For recent data: forward_adjusted ≈ actual price
-For historical: actual = forward_adjusted / cumulative_factor
-
-We fetch both (flag=1 and flag=3) to calculate the real adjustment factor.
+Note: baostock data is forward-adjusted, so for API:
+- original: forward-adjusted (what baostock gives)
+- forward: same as original (factor=1.0)
+- backward: price / factor (but we don't have actual prices)
 """
 
 import asyncio
@@ -63,41 +61,23 @@ class BaostockFetcher(BaseFetcher):
             raise Exception(f"baostock login failed: {rs.error_msg}")
 
         try:
-            # Fetch raw (cumulative) prices
-            rs_raw = bs.query_history_k_data_plus(
-                bs_symbol, fields, start_date, end_date, frequency, adjustflag="1",
-            )
-            raw_rows = []
-            while rs_raw.next():
-                raw_rows.append(rs_raw.get_row_data())
-
-            # Fetch forward-adjusted prices (matches real market for recent)
-            rs_fwd = bs.query_history_k_data_plus(
+            # Fetch forward-adjusted prices (前复权)
+            # These are the most useful for backtesting
+            result = bs.query_history_k_data_plus(
                 bs_symbol, fields, start_date, end_date, frequency, adjustflag="3",
             )
-            fwd_rows = []
-            while rs_fwd.next():
-                fwd_rows.append(rs_fwd.get_row_data())
 
-            # Combine: actual = forward_adjusted, factor = forward / raw
             records = []
-            for raw, fwd in zip(raw_rows, fwd_rows):
-                raw_close = float(raw[4]) if raw[4] else 0
-                fwd_close = float(fwd[4]) if fwd[4] else 0
-                
-                # Adjustment factor: how much forward differs from raw
-                # This factor lets us convert: actual_price = raw_price * factor
-                factor = (fwd_close / raw_close) if raw_close > 0 else 1.0
-
+            while result.next():
+                row = result.get_row_data()
                 records.append({
-                    "date": fwd[0],
-                    "open": float(fwd[1]) if fwd[1] else 0,   # Forward adjusted (≈actual for recent)
-                    "high": float(fwd[2]) if fwd[2] else 0,
-                    "low": float(fwd[3]) if fwd[3] else 0,
-                    "close": fwd_close,
-                    "volume": int(float(fwd[5])) if fwd[5] else 0,
-                    "amount": float(fwd[6]) if fwd[6] else 0,
-                    "adjustor_factor": round(factor, 8),
+                    "date": row[0],
+                    "open": float(row[1]) if row[1] else 0,
+                    "high": float(row[2]) if row[2] else 0,
+                    "low": float(row[3]) if row[3] else 0,
+                    "close": float(row[4]) if row[4] else 0,
+                    "volume": int(float(row[5])) if row[5] else 0,
+                    "amount": float(row[6]) if row[6] else 0,
                 })
 
             return records
@@ -121,6 +101,8 @@ class BaostockFetcher(BaseFetcher):
 
         records = []
         for row in raw_records:
+            # baostock returns forward-adjusted prices
+            # Store with backward_factor=1.0 (prices already normalized)
             record = OHLCBase(
                 symbol=symbol,
                 timeframe=timeframe,
@@ -130,8 +112,8 @@ class BaostockFetcher(BaseFetcher):
                 low=row["low"],
                 close=row["close"],
                 volume=row["volume"],
-                adjustor_factor=row["adjustor_factor"],
-                data={"amount": row["amount"]},
+                backward_factor=1.0,  # Forward-adjusted, normalized
+                data={"amount": row["amount"], "source_note": "forward_adjusted"},
             )
             records.append(record)
 

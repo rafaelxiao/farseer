@@ -8,7 +8,7 @@ export interface OHLC {
   low: number
   close: number
   volume: number
-  adjustor_factor: number  // adjusted_price = price * adjustor_factor
+  backward_factor: number  // backward_adjusted = price * backward_factor
   data: Record<string, any>  // Extra: vwap, turnover, etc.
   created_at: string
   updated_at: string

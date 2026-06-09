@@ -19,5 +19,5 @@ class Fundamentals(TimestampMixin, Base):
     data: Mapped[str] = mapped_column(Text, nullable=False, default="{}")  # JSON: {"pe_ratio": 15.2, "revenue": 1000000, ...}
 
     __table_args__ = (
-        Index("ix_fundamentals_symbol_date", "symbol", "date"),
+        Index("ix_fundamentals_symbol_date_category", "symbol", "date", "category", unique=True),
     )

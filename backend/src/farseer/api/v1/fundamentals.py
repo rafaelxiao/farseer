@@ -22,9 +22,10 @@ async def get_fundamentals(
 
 
 @router.post("/", response_model=FundamentalsOut)
-async def create_fundamentals(
+async def upsert_fundamentals(
     data: FundamentalsBase,
     db: AsyncSession = Depends(get_db),
 ):
+    """Insert or update fundamentals (upsert)."""
     service = FundamentalsService(db)
-    return await service.create_fundamentals(data)
+    return await service.upsert_fundamentals(data)

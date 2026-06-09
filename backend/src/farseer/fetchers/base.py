@@ -97,7 +97,7 @@ class BaseFetcher(ABC):
         """Save a single OHLC record. Override for custom logic."""
         from farseer.services.ohlc import OHLCService
         service = OHLCService(db)
-        await service.create_ohlc(record)
+        await service.upsert_ohlc(record)
 
     def validate_symbol(self, symbol: str) -> bool:
         """Check if symbol is supported by this source."""

@@ -22,18 +22,20 @@ async def get_ohlc(
 
 
 @router.post("/", response_model=OHCLOut)
-async def create_ohlc(
+async def upsert_ohlc(
     data: OHLCBase,
     db: AsyncSession = Depends(get_db),
 ):
+    """Insert or update OHLC record (upsert)."""
     service = OHLCService(db)
-    return await service.create_ohlc(data)
+    return await service.upsert_ohlc(data)
 
 
 @router.post("/batch", response_model=list[OHCLOut])
-async def create_ohlc_batch(
+async def upsert_ohlc_batch(
     data: OHLCBatchCreate,
     db: AsyncSession = Depends(get_db),
 ):
+    """Batch upsert OHLC records."""
     service = OHLCService(db)
-    return await service.create_ohlc_batch(data.items)
+    return await service.upsert_ohlc_batch(data.items)

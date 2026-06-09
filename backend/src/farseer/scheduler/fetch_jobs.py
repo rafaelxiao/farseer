@@ -21,6 +21,7 @@ from farseer.database import async_session_factory
 from farseer.fetchers.registry import FetcherRegistry
 from farseer.models.ohlc import OHLC
 from farseer.symbols.formats import SymbolFormat, Exchange
+from farseer.symbols.converter import SymbolConverter
 
 logger = logging.getLogger(__name__)
 
@@ -127,6 +128,9 @@ async def fetch_batch(
     - Progress tracking (resume capability)
     - Batch progress saves
     """
+    # Import sources to register fetchers
+    import farseer.fetchers.sources  # noqa: F401
+
     # Get symbols to fetch
     if symbols is None:
         logger.info("Fetching all A-share symbols...")

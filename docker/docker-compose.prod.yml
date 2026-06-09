@@ -1,0 +1,17 @@
+version: "3.8"
+
+# Production override - use with: docker compose -f docker-compose.yml -f docker-compose.prod.yml up
+
+services:
+  db:
+    # Don't expose DB port in production
+    ports: !override []
+
+  backend:
+    ports:
+      - "80:8000"
+    environment:
+      ENVIRONMENT: prod
+      DEBUG: "false"
+      CORS_ORIGINS: ${CORS_ORIGINS:-["http://localhost","http://127.0.0.1"]}
+    restart: unless-stopped

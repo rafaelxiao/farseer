@@ -1,0 +1,39 @@
+version: "3.8"
+
+services:
+  db:
+    image: timescale/timescaledb:latest-pg16
+    container_name: farseer-db
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: farseer
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: ../docker/Dockerfile.backend
+    container_name: farseer-backend
+    ports:
+      - "8000:8000"
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-dev}
+      DEBUG: ${DEBUG:-true}
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://postgres:postgres@db:5432/farseer}
+      DATABASE_URL_SYNC: ${DATABASE_URL_SYNC:-postgresql+psycopg2://postgres:postgres@db:5432/farseer}
+      CORS_ORIGINS: ${CORS_ORIGINS:-["http://localhost:5173"]}
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:

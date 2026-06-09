@@ -1,0 +1,18 @@
+version: "3.8"
+
+# Development override - use with: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  db:
+    ports:
+      - "5432:5432"
+
+  backend:
+    ports:
+      - "8000:8000"
+    environment:
+      ENVIRONMENT: dev
+      DEBUG: "true"
+    volumes:
+      # Mount source for hot reload
+      - ../backend/src:/app/src

@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# uv
+.uv/
+
+# Node
+node_modules/
+frontend/dist/
+
+# Environment (keep examples, ignore actual .env)
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Database
+*.db
+*.sqlite
+
+# Logs
+*.log
+logs/
+
+# Docker volumes
+pgdata/
+
+# Alembic
+alembic.ini.bak

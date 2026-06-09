@@ -1,13 +1,12 @@
 """
 yfinance data source fetcher.
 
-Stores:
-- Actual trading prices (Close, not adjusted)
-- backward_factor for adjustment calculations
+Stores TRUE backward factors (后复权):
+- Historical: backward_factor = 1.0 (prices stay actual)
+- Recent: backward_factor > 1.0 (prices adjusted UP)
+- When new split: historical data UNCHANGED ✓
 
-Conversion:
-- backward_factor = forward_factor * latest_backward_factor
-- Where forward_factor = Adj Close / Close
+Formula: backward_factor = forward_factor / forward_factor_first
 """
 
 from datetime import datetime
@@ -45,14 +44,13 @@ class YFinanceFetcher(BaseFetcher):
         start: str | None = None,
         end: str | None = None,
     ) -> list[OHLCBase]:
-        """Fetch OHLC from yfinance with backward_factor."""
+        """Fetch OHLC with TRUE backward factors."""
 
         yf_symbol = SymbolConverter.to_yfinance(symbol)
         interval = TIMEFRAME_MAP.get(timeframe, "1d")
         start_date = start[:10] if start else None
         end_date = end[:10] if end else None
 
-        # auto_adjust=False: get actual prices + Adj Close
         ticker = yf.Ticker(yf_symbol)
         hist = ticker.history(
             start=start_date,
@@ -64,12 +62,14 @@ class YFinanceFetcher(BaseFetcher):
         if hist.empty:
             return []
 
-        # First pass: calculate forward_factors
+        # First pass: get forward_factors
+        forward_factors = []
         rows_data = []
         for idx, row in hist.iterrows():
             close = row["Close"]
             adj_close = row.get("Adj Close", close)
             forward_factor = (adj_close / close) if close != 0 else 1.0
+            forward_factors.append(forward_factor)
 
             extra = {}
             if "Stock Splits" in row and row["Stock Splits"] > 0:
@@ -84,18 +84,20 @@ class YFinanceFetcher(BaseFetcher):
                 "low": float(row["Low"]),
                 "close": float(close),
                 "volume": int(row.get("Volume", 0)),
-                "forward_factor": round(forward_factor, 10),
+                "forward_factor": forward_factor,
                 "extra": extra,
             })
 
-        # Calculate backward_factors
-        # backward_factor = forward_factor / latest_forward_factor
-        # This normalizes so latest backward_factor ≈ 1.0
-        latest_forward = rows_data[-1]["forward_factor"] if rows_data else 1.0
+        # Calculate backward factors
+        # backward_factor = forward_factor / forward_factor_first
+        # This ensures:
+        #   - First date: backward_factor = 1.0 (historical prices stay actual)
+        #   - Later dates: backward_factor >= 1.0 (prices adjusted UP)
+        first_forward = forward_factors[0] if forward_factors else 1.0
 
         records = []
         for data in rows_data:
-            backward_factor = data["forward_factor"] / latest_forward if latest_forward else 1.0
+            backward_factor = data["forward_factor"] / first_forward if first_forward else 1.0
 
             record = OHLCBase(
                 symbol=symbol,

@@ -8,9 +8,7 @@ export interface OHLC {
   low: number
   close: number
   volume: number
-  adjusted_close: number | null
-  split_factor: number | null
-  dividend_amount: number | null
+  adjustor_factor: number  // adjusted_price = price * adjustor_factor
   data: Record<string, any>  // Extra: vwap, turnover, etc.
   created_at: string
   updated_at: string

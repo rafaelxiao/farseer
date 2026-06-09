@@ -45,9 +45,7 @@ class OHLCService:
             low=data.low,
             close=data.close,
             volume=data.volume,
-            adjusted_close=data.adjusted_close,
-            split_factor=data.split_factor,
-            dividend_amount=data.dividend_amount,
+            adjustor_factor=data.adjustor_factor,
             data=json.dumps(data.data) if data.data else "{}",
         )
         self.db.add(ohlc)
@@ -66,9 +64,7 @@ class OHLCService:
                 low=item.low,
                 close=item.close,
                 volume=item.volume,
-                adjusted_close=item.adjusted_close,
-                split_factor=item.split_factor,
-                dividend_amount=item.dividend_amount,
+                adjustor_factor=item.adjustor_factor,
                 data=json.dumps(item.data) if item.data else "{}",
             )
             for item in items

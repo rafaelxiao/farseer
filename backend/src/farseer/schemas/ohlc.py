@@ -12,9 +12,7 @@ class OHLCBase(BaseModel):
     low: float
     close: float
     volume: int = 0
-    adjusted_close: float | None = None
-    split_factor: float | None = 1.0
-    dividend_amount: float | None = 0
+    adjustor_factor: float = 1.0  # adjusted_price = price * adjustor_factor
     data: dict = {}  # Extra: {"vwap": 150.5, "turnover": 1234567, ...}
 
 

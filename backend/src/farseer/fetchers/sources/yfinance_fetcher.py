@@ -4,10 +4,9 @@ yfinance data source fetcher.
 Symbol format: 600519.SH -> 600519.SS (yfinance uses .SS for Shanghai)
 
 Adjustment:
-- yfinance provides 'Adj Close' column
+- auto_adjust=False: Returns original prices + Adj Close
 - adjustor_factor = Adj Close / Close
-- When auto_adjust=True (default), yfinance returns adjusted OHLC directly
-- We use auto_adjust=False to get both original and adjusted values
+- Stores ACTUAL trading prices, factor tells you how to adjust
 """
 
 from datetime import datetime
@@ -20,7 +19,6 @@ from farseer.schemas.ohlc import OHLCBase
 from farseer.symbols.converter import SymbolConverter
 
 
-# Map our timeframe to yfinance interval
 TIMEFRAME_MAP = {
     "1m": "1m",
     "5m": "5m",
@@ -48,21 +46,18 @@ class YFinanceFetcher(BaseFetcher):
     ) -> list[OHLCBase]:
         """Fetch OHLC from yfinance."""
 
-        # Convert symbol: 600519.SH -> 600519.SS
         yf_symbol = SymbolConverter.to_yfinance(symbol)
         interval = TIMEFRAME_MAP.get(timeframe, "1d")
-
-        # yfinance date format
         start_date = start[:10] if start else None
         end_date = end[:10] if end else None
 
-        # Fetch with auto_adjust=False to get Adj Close
+        # auto_adjust=False: get original prices + Adj Close
         ticker = yf.Ticker(yf_symbol)
         hist = ticker.history(
             start=start_date,
             end=end_date,
             interval=interval,
-            auto_adjust=False,  # Get original + adjusted
+            auto_adjust=False,  # Get actual prices + adjusted
         )
 
         if hist.empty:
@@ -70,9 +65,13 @@ class YFinanceFetcher(BaseFetcher):
 
         records = []
         for idx, row in hist.iterrows():
-            # Calculate adjustor factor
+            # ACTUAL trading prices (not adjusted)
             close = row["Close"]
             adj_close = row.get("Adj Close", close)
+            
+            # Factor = adjusted / actual
+            # For recent: factor ≈ 1.0
+            # For historical (after splits): factor < 1.0
             adjustor_factor = (adj_close / close) if close != 0 else 1.0
 
             # Extra data
@@ -83,13 +82,13 @@ class YFinanceFetcher(BaseFetcher):
                 extra["dividends"] = float(row["Dividends"])
 
             record = OHLCBase(
-                symbol=symbol,  # Use Farseer canonical symbol
+                symbol=symbol,
                 timeframe=timeframe,
                 timestamp=idx.to_pydatetime() if hasattr(idx, 'to_pydatetime') else datetime.fromisoformat(str(idx)),
-                open=float(row["Open"]),
-                high=float(row["High"]),
-                low=float(row["Low"]),
-                close=float(close),
+                open=float(row["Open"]),       # Actual price
+                high=float(row["High"]),       # Actual price
+                low=float(row["Low"]),         # Actual price
+                close=float(close),            # Actual price
                 volume=int(row.get("Volume", 0)),
                 adjustor_factor=round(adjustor_factor, 8),
                 data=extra,
@@ -99,5 +98,4 @@ class YFinanceFetcher(BaseFetcher):
         return records
 
 
-# Auto-register
 FetcherRegistry.register(YFinanceFetcher())

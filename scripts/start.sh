@@ -18,16 +18,19 @@ if [[ "$MODE" != "dev" && "$MODE" != "prod" ]]; then
     exit 1
 fi
 
-echo -e "${GREEN}Starting Farseer in ${MODE} mode...${NC}"
-
 # Source environment
 source "$PROJECT_ROOT/.env.${MODE}"
 
-# Kill existing processes
+# Stop existing
 echo -e "${YELLOW}Stopping existing processes...${NC}"
-pkill -f "uvicorn farseer.main:app" 2>/dev/null || true
-pkill -f "vite.*--port ${VITE_PORT}" 2>/dev/null || true
+pkill -f "uvicorn farseer.main:app" 2>/dev/null && echo "  Stopped backend" || echo "  No backend running"
+pkill -f "vite.*--port" 2>/dev/null && echo "  Stopped frontend" || echo "  No frontend running"
 sleep 1
+
+echo -e "${GREEN}Starting Farseer in ${MODE} mode...${NC}"
+
+# Logs dir
+mkdir -p "$PROJECT_ROOT/logs"
 
 # Start backend
 echo -e "${GREEN}Starting backend on port ${PORT}...${NC}"
@@ -37,45 +40,34 @@ PYTHONPATH=src nohup python3 -m uvicorn farseer.main:app \
     --port "$PORT" \
     --reload \
     > "$PROJECT_ROOT/logs/backend.log" 2>&1 &
-BACKEND_PID=$!
-echo -e "  Backend PID: ${BACKEND_PID}"
+echo -e "  Backend PID: $!"
 
 # Start frontend
 echo -e "${GREEN}Starting frontend on port ${VITE_PORT}...${NC}"
 cd "$PROJECT_ROOT/frontend"
-mkdir -p "$PROJECT_ROOT/logs"
 nohup bun run vite --host 0.0.0.0 --port "$VITE_PORT" \
     > "$PROJECT_ROOT/logs/frontend.log" 2>&1 &
-FRONTEND_PID=$!
-echo -e "  Frontend PID: ${FRONTEND_PID}"
+echo -e "  Frontend PID: $!"
 
 # Wait for services
 sleep 3
 
-# Check if services are running
+# Check status
 echo ""
-echo -e "${GREEN}Checking services...${NC}"
+echo -e "${GREEN}=== Status ===${NC}"
+curl -s "http://127.0.0.1:${PORT}/health" > /dev/null 2>&1 \
+    && echo -e "  Backend:  ${GREEN}✓${NC}" \
+    || echo -e "  Backend:  ${RED}✗${NC} (see logs/backend.log)"
 
-if curl -s "http://127.0.0.1:${PORT}/health" > /dev/null 2>&1; then
-    echo -e "  Backend:  ${GREEN}✓ Running${NC}"
-else
-    echo -e "  Backend:  ${RED}✗ Failed${NC} (check logs/backend.log)"
-fi
+curl -s "http://127.0.0.1:${VITE_PORT}/" > /dev/null 2>&1 \
+    && echo -e "  Frontend: ${GREEN}✓${NC}" \
+    || echo -e "  Frontend: ${RED}✗${NC} (see logs/frontend.log)"
 
-if curl -s "http://127.0.0.1:${VITE_PORT}/" > /dev/null 2>&1; then
-    echo -e "  Frontend: ${GREEN}✓ Running${NC}"
-else
-    echo -e "  Frontend: ${RED}✗ Failed${NC} (check logs/frontend.log)"
-fi
-
-# Show URLs
+# URLs
 echo ""
 echo -e "${GREEN}=== URLs ===${NC}"
-echo -e "  Frontend: http://175.178.10.229/farseer/${MODE}/"
-echo -e "  API Docs: http://175.178.10.229/farseer/${MODE}/docs"
-echo -e "  Health:   http://175.178.10.229/farseer/${MODE}/health"
+echo "  http://175.178.10.229/farseer/${MODE}/"
+echo "  http://175.178.10.229/farseer/${MODE}/docs"
 echo ""
-echo -e "  Logs: tail -f $PROJECT_ROOT/logs/backend.log"
-echo -e "        tail -f $PROJECT_ROOT/logs/frontend.log"
-echo ""
-echo -e "${YELLOW}Press Ctrl+C to stop (or run: pkill -f 'uvicorn|vite')${NC}"
+echo "  Logs: tail -f logs/backend.log"
+echo "        tail -f logs/frontend.log"

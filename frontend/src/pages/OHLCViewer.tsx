@@ -1,21 +1,12 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Select } from "@/components/ui/select"
-import { DateInput } from "@/components/ui/date-input"
-import { TextInput } from "@/components/ui/text-input"
 import { ohlcApi } from "@/api/ohlc"
 import OHLCChart from "@/components/shared/OHLCChart"
 
-const TIMEFRAME_OPTIONS = [
-  { value: "1d", label: "1d" },
-  { value: "1w", label: "1w (soon)", disabled: true },
-  { value: "1M", label: "1M (soon)", disabled: true },
-]
-
-const ADJUST_OPTIONS = [
+const ADJUSTMENTS = [
   { value: "original", label: "Original" },
   { value: "forward", label: "Forward" },
   { value: "backward", label: "Backward" },
@@ -29,7 +20,7 @@ export default function OHLCViewer() {
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, refetch } = useQuery({
     queryKey: ["ohlc", symbol, timeframe, adjust, startDate, endDate],
     queryFn: () => ohlcApi.get({
       symbol,
@@ -55,38 +46,54 @@ export default function OHLCViewer() {
       {/* Filters */}
       <Card>
         <CardContent className="py-3">
-          <div className="flex flex-wrap items-end gap-3">
-            <TextInput
-              size="sm"
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="text"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+              className="h-8 w-28 rounded border border-input bg-background px-2 text-sm"
               placeholder="600519.SH"
-              className="w-28"
             />
-            <Button size="sm" onClick={handleSearch}>Search</Button>
+            <Button size="sm" className="h-8" onClick={handleSearch}>Search</Button>
 
-            <div className="h-6 w-px bg-border" />
+            <div className="h-6 w-px bg-border mx-1" />
 
-            <Select
-              size="sm"
-              options={TIMEFRAME_OPTIONS}
+            <select
               value={timeframe}
               onChange={(e) => setTimeframe(e.target.value)}
+              className="h-8 rounded border border-input bg-background px-2 text-sm"
+            >
+              <option value="1d">1d</option>
+              <option value="1w" disabled>1w (soon)</option>
+              <option value="1M" disabled>1M (soon)</option>
+            </select>
+
+            <div className="h-6 w-px bg-border mx-1" />
+
+            <label className="text-xs text-muted-foreground">From</label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="h-8 rounded border border-input bg-background px-2 text-sm"
+            />
+            <label className="text-xs text-muted-foreground">To</label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="h-8 rounded border border-input bg-background px-2 text-sm"
             />
 
-            <div className="h-6 w-px bg-border" />
+            <div className="h-6 w-px bg-border mx-1" />
 
-            <DateInput size="sm" label="From" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-            <DateInput size="sm" label="To" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-
-            <div className="h-6 w-px bg-border" />
-
-            {ADJUST_OPTIONS.map((adj) => (
+            {ADJUSTMENTS.map((adj) => (
               <Button
                 key={adj.value}
                 variant={adjust === adj.value ? "default" : "outline"}
                 size="sm"
+                className="h-8"
                 onClick={() => setAdjust(adj.value)}
               >
                 {adj.label}

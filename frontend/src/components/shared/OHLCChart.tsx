@@ -1,4 +1,5 @@
-import { useMemo } from "react"
+import { useEffect, useRef } from "react"
+import { createChart, ColorType, CrosshairMode, CandlestickSeries, HistogramSeries } from "lightweight-charts"
 import type { OHLC } from "@/types"
 
 interface OHLCChartProps {
@@ -7,11 +8,89 @@ interface OHLCChartProps {
 }
 
 export default function OHLCChart({ data, height = 400 }: OHLCChartProps) {
-  const chartData = useMemo(() => {
-    return [...data]
-      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-      .slice(-100) // Show last 100 records for now
-  }, [data])
+  const chartContainerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!chartContainerRef.current || data.length === 0) return
+
+    // Clear previous chart
+    chartContainerRef.current.innerHTML = ""
+
+    const chart = createChart(chartContainerRef.current, {
+      layout: {
+        background: { type: ColorType.Solid, color: "#ffffff" },
+        textColor: "#333",
+        attributionLogo: false,
+      },
+      grid: {
+        vertLines: { color: "#f0f0f0" },
+        horzLines: { color: "#f0f0f0" },
+      },
+      crosshair: {
+        mode: CrosshairMode.Normal,
+      },
+      rightPriceScale: {
+        borderColor: "#d1d5db",
+      },
+      timeScale: {
+        borderColor: "#d1d5db",
+        timeVisible: true,
+      },
+      height,
+    })
+
+    // Sort data by timestamp
+    const sorted = [...data].sort(
+      (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    )
+
+    // Candlestick series (v5 API)
+    const candlestickSeries = chart.addSeries(CandlestickSeries, {
+      upColor: "#ef4444",
+      downColor: "#22c55e",
+      borderUpColor: "#ef4444",
+      borderDownColor: "#22c55e",
+      wickUpColor: "#ef4444",
+      wickDownColor: "#22c55e",
+    })
+
+    candlestickSeries.setData(
+      sorted.map((d) => ({
+        time: (new Date(d.timestamp).getTime() / 1000) as any,
+        open: d.open,
+        high: d.high,
+        low: d.low,
+        close: d.close,
+      }))
+    )
+
+    // Volume series (v5 API)
+    const volumeSeries = chart.addSeries(HistogramSeries, {
+      color: "#6b7280",
+      priceFormat: { type: "volume" },
+      priceScaleId: "volume",
+    })
+
+    chart.priceScale("volume").applyOptions({
+      scaleMargins: { top: 0.8, bottom: 0 },
+    })
+
+    volumeSeries.setData(
+      sorted.map((d) => ({
+        time: (new Date(d.timestamp).getTime() / 1000) as any,
+        value: d.volume,
+        color: d.close >= d.open ? "rgba(239, 68, 68, 0.3)" : "rgba(34, 197, 94, 0.3)",
+      }))
+    )
+
+    // Fit content
+    chart.timeScale().fitContent()
+
+    // Cleanup
+    return () => {
+      chart.remove()
+    }
+  }, [data, height])
 
   if (data.length === 0) {
     return (
@@ -21,53 +100,5 @@ export default function OHLCChart({ data, height = 400 }: OHLCChartProps) {
     )
   }
 
-  // Simple table view for now
-  return (
-    <div className="space-y-4">
-      <div className="text-sm text-muted-foreground">
-        Showing {chartData.length} of {data.length} records
-      </div>
-      
-      <div className="overflow-auto max-h-[500px]">
-        <table className="w-full text-xs">
-          <thead className="sticky top-0 bg-background">
-            <tr className="border-b">
-              <th className="text-left p-2">Date</th>
-              <th className="text-right p-2">Open</th>
-              <th className="text-right p-2">High</th>
-              <th className="text-right p-2">Low</th>
-              <th className="text-right p-2">Close</th>
-              <th className="text-right p-2">Volume</th>
-              <th className="text-right p-2">Change</th>
-            </tr>
-          </thead>
-          <tbody>
-            {chartData.map((d, i) => {
-              const prev = i > 0 ? chartData[i - 1] : null
-              const change = prev ? ((d.close - prev.close) / prev.close * 100) : 0
-              const isUp = change >= 0
-              
-              return (
-                <tr key={d.id} className="border-b hover:bg-muted/50">
-                  <td className="p-2">
-                    {new Date(d.timestamp).toLocaleDateString()}
-                  </td>
-                  <td className="text-right p-2">{d.open.toFixed(2)}</td>
-                  <td className="text-right p-2">{d.high.toFixed(2)}</td>
-                  <td className="text-right p-2">{d.low.toFixed(2)}</td>
-                  <td className="text-right p-2 font-medium">{d.close.toFixed(2)}</td>
-                  <td className="text-right p-2 text-muted-foreground">
-                    {d.volume.toLocaleString()}
-                  </td>
-                  <td className={`text-right p-2 ${isUp ? 'text-red-600' : 'text-green-600'}`}>
-                    {change !== 0 ? `${isUp ? '+' : ''}${change.toFixed(2)}%` : '-'}
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  )
+  return <div ref={chartContainerRef} />
 }

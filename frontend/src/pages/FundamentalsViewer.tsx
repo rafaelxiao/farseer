@@ -19,68 +19,59 @@ export default function FundamentalsViewer() {
   }
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Fundamentals Viewer</h1>
+    <div className="space-y-4">
+      <h1 className="text-2xl font-bold">Fundamentals Viewer</h1>
 
-      {/* Filters */}
       <Card>
-        <CardContent className="pt-6">
-          <div className="flex gap-4 items-end">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Symbol</label>
-              <input
-                type="text"
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                placeholder="AAPL (leave empty for all)"
-              />
-            </div>
-            <Button onClick={handleSearch}>Search</Button>
+        <CardContent className="pt-4">
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+              className="flex h-9 w-40 rounded-md border border-input bg-background px-3 py-1 text-sm"
+              placeholder="Symbol (empty=all)"
+            />
+            <Button size="sm" onClick={handleSearch}>Search</Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Data Table */}
       <Card>
-        <CardHeader>
-          <CardTitle>Fundamentals Data</CardTitle>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Fundamentals Data</CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <p className="text-muted-foreground">Loading...</p>
+            <p className="text-sm text-muted-foreground">Loading...</p>
           ) : data && data.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Symbol</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead className="text-right">P/E</TableHead>
-                  <TableHead className="text-right">P/B</TableHead>
-                  <TableHead className="text-right">Market Cap</TableHead>
-                  <TableHead className="text-right">EPS</TableHead>
-                  <TableHead>Sector</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.map((row) => (
-                  <TableRow key={row.id}>
-                    <TableCell className="font-medium">{row.symbol}</TableCell>
-                    <TableCell>{row.date}</TableCell>
-                    <TableCell className="text-right">{row.pe_ratio?.toFixed(2) ?? "-"}</TableCell>
-                    <TableCell className="text-right">{row.pb_ratio?.toFixed(2) ?? "-"}</TableCell>
-                    <TableCell className="text-right">
-                      {row.market_cap ? (row.market_cap / 1e9).toFixed(2) + "B" : "-"}
-                    </TableCell>
-                    <TableCell className="text-right">{row.eps?.toFixed(2) ?? "-"}</TableCell>
-                    <TableCell>{row.sector ?? "-"}</TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs">Symbol</TableHead>
+                    <TableHead className="text-xs">Date</TableHead>
+                    <TableHead className="text-xs">Category</TableHead>
+                    <TableHead className="text-xs">Data</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {data.map((row) => (
+                    <TableRow key={row.id}>
+                      <TableCell className="text-sm font-medium">{row.symbol}</TableCell>
+                      <TableCell className="text-sm">{row.date}</TableCell>
+                      <TableCell className="text-sm">{row.category ?? "-"}</TableCell>
+                      <TableCell className="text-xs max-w-xs truncate">
+                        {JSON.stringify(row.data)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           ) : (
-            <p className="text-muted-foreground">No data found</p>
+            <p className="text-sm text-muted-foreground">No data found</p>
           )}
         </CardContent>
       </Card>

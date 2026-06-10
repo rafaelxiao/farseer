@@ -76,7 +76,7 @@ class OHLCService:
 
             bf = float(row.backward_factor)
 
-            if adjust == "backward":
+            if adjust in ("backward", "original"):
                 # 后复权: stored prices (immutable)
                 record.update({
                     "open": float(row.open),

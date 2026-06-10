@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react"
-import { createChart, ColorType, CrosshairMode } from "lightweight-charts"
+import { createChart, ColorType, CrosshairMode, CandlestickSeries, HistogramSeries } from "lightweight-charts"
 import type { OHLC } from "@/types"
 
 interface OHLCChartProps {
@@ -21,6 +21,7 @@ export default function OHLCChart({ data, height = 400 }: OHLCChartProps) {
       layout: {
         background: { type: ColorType.Solid, color: "#ffffff" },
         textColor: "#333",
+        attributionLogo: false,
       },
       grid: {
         vertLines: { color: "#f0f0f0" },
@@ -41,8 +42,8 @@ export default function OHLCChart({ data, height = 400 }: OHLCChartProps) {
 
     chartRef.current = chart
 
-    // Candlestick series
-    const candlestickSeries = chart.addCandlestickSeries({
+    // Candlestick series (v5 API)
+    const candlestickSeries = chart.addSeries(CandlestickSeries, {
       upColor: "#ef4444",       // Red for up (Chinese convention)
       downColor: "#22c55e",     // Green for down
       borderUpColor: "#ef4444",
@@ -66,8 +67,8 @@ export default function OHLCChart({ data, height = 400 }: OHLCChartProps) {
       }))
     )
 
-    // Volume series
-    const volumeSeries = chart.addHistogramSeries({
+    // Volume series (v5 API)
+    const volumeSeries = chart.addSeries(HistogramSeries, {
       color: "#6b7280",
       priceFormat: { type: "volume" },
       priceScaleId: "volume",

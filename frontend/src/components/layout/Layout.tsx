@@ -14,12 +14,12 @@ export default function Layout() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-14 items-center">
-          <Link to="/" className="mr-6 flex items-center space-x-2">
-            <span className="font-bold text-lg">Farseer</span>
+      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur">
+        <div className="container flex h-10 items-center px-4">
+          <Link to="/" className="mr-4 font-bold text-sm">
+            Farseer
           </Link>
-          <nav className="flex items-center space-x-6 text-sm font-medium">
+          <nav className="flex items-center gap-3 text-sm">
             {navItems.map((item) => (
               <Link
                 key={item.path}
@@ -27,7 +27,7 @@ export default function Layout() {
                 className={cn(
                   "transition-colors hover:text-foreground/80",
                   location.pathname === item.path
-                    ? "text-foreground"
+                    ? "text-foreground font-medium"
                     : "text-foreground/60"
                 )}
               >
@@ -39,7 +39,7 @@ export default function Layout() {
       </header>
 
       {/* Main content */}
-      <main className="container py-6">
+      <main className="container px-4 py-4">
         <Outlet />
       </main>
     </div>

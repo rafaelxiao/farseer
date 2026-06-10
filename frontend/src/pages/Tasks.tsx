@@ -36,104 +36,109 @@ export default function Tasks() {
   }
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Tasks</h1>
+    <div className="space-y-4">
+      <h1 className="text-2xl font-bold">Tasks</h1>
 
-      {/* Jobs */}
       <Card>
-        <CardHeader>
-          <CardTitle>Scheduled Jobs</CardTitle>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Scheduled Jobs</CardTitle>
         </CardHeader>
         <CardContent>
           {jobsLoading ? (
-            <p className="text-muted-foreground">Loading...</p>
+            <p className="text-sm text-muted-foreground">Loading...</p>
           ) : jobs && jobs.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Job ID</TableHead>
-                  <TableHead>Last Status</TableHead>
-                  <TableHead>Last Run</TableHead>
-                  <TableHead>Next Run</TableHead>
-                  <TableHead className="text-right">Total Runs</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {jobs.map((job) => (
-                  <TableRow key={job.job_id}>
-                    <TableCell className="font-medium">{job.job_id}</TableCell>
-                    <TableCell>
-                      <Badge variant={statusVariant(job.last_status ?? "")}>
-                        {job.last_status ?? "never"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {job.last_run ? new Date(job.last_run).toLocaleString() : "-"}
-                    </TableCell>
-                    <TableCell>
-                      {job.next_run ? new Date(job.next_run).toLocaleString() : "-"}
-                    </TableCell>
-                    <TableCell className="text-right">{job.total_runs}</TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => triggerMutation.mutate(job.job_id)}
-                        disabled={triggerMutation.isPending}
-                      >
-                        Run Now
-                      </Button>
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs">Job ID</TableHead>
+                    <TableHead className="text-xs">Status</TableHead>
+                    <TableHead className="text-xs">Last Run</TableHead>
+                    <TableHead className="text-xs">Next Run</TableHead>
+                    <TableHead className="text-xs text-right">Runs</TableHead>
+                    <TableHead className="text-xs text-right">Action</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {jobs.map((job) => (
+                    <TableRow key={job.job_id}>
+                      <TableCell className="text-sm font-medium">{job.job_id}</TableCell>
+                      <TableCell>
+                        <Badge variant={statusVariant(job.last_status ?? "")} className="text-xs">
+                          {job.last_status ?? "never"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {job.last_run ? new Date(job.last_run).toLocaleString() : "-"}
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {job.next_run ? new Date(job.next_run).toLocaleString() : "-"}
+                      </TableCell>
+                      <TableCell className="text-sm text-right">{job.total_runs}</TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => triggerMutation.mutate(job.job_id)}
+                          disabled={triggerMutation.isPending}
+                        >
+                          Run
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           ) : (
-            <p className="text-muted-foreground">No jobs registered</p>
+            <p className="text-sm text-muted-foreground">No jobs registered</p>
           )}
         </CardContent>
       </Card>
 
-      {/* Recent Runs */}
       <Card>
-        <CardHeader>
-          <CardTitle>Recent Runs</CardTitle>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Recent Runs</CardTitle>
         </CardHeader>
         <CardContent>
           {runsLoading ? (
-            <p className="text-muted-foreground">Loading...</p>
+            <p className="text-sm text-muted-foreground">Loading...</p>
           ) : runs && runs.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Job ID</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Started</TableHead>
-                  <TableHead>Finished</TableHead>
-                  <TableHead>Result</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {runs.map((run) => (
-                  <TableRow key={run.id}>
-                    <TableCell className="font-medium">{run.job_id}</TableCell>
-                    <TableCell>
-                      <Badge variant={statusVariant(run.status)}>{run.status}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      {run.started_at ? new Date(run.started_at).toLocaleString() : "-"}
-                    </TableCell>
-                    <TableCell>
-                      {run.finished_at ? new Date(run.finished_at).toLocaleString() : "-"}
-                    </TableCell>
-                    <TableCell className="max-w-xs truncate">{run.result ?? "-"}</TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs">Job ID</TableHead>
+                    <TableHead className="text-xs">Status</TableHead>
+                    <TableHead className="text-xs">Started</TableHead>
+                    <TableHead className="text-xs">Finished</TableHead>
+                    <TableHead className="text-xs">Result</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {runs.map((run) => (
+                    <TableRow key={run.id}>
+                      <TableCell className="text-sm font-medium">{run.job_id}</TableCell>
+                      <TableCell>
+                        <Badge variant={statusVariant(run.status)} className="text-xs">
+                          {run.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {run.started_at ? new Date(run.started_at).toLocaleString() : "-"}
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {run.finished_at ? new Date(run.finished_at).toLocaleString() : "-"}
+                      </TableCell>
+                      <TableCell className="text-xs max-w-xs truncate">{run.result ?? "-"}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           ) : (
-            <p className="text-muted-foreground">No runs yet</p>
+            <p className="text-sm text-muted-foreground">No runs yet</p>
           )}
         </CardContent>
       </Card>

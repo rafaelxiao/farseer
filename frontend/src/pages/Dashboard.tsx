@@ -9,39 +9,34 @@ export default function Dashboard() {
   })
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Dashboard</h1>
+    <div className="space-y-4">
+      <h1 className="text-2xl font-bold">Dashboard</h1>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Jobs</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{jobs?.length ?? 0}</div>
+          <CardContent className="pt-4 pb-3">
+            <div className="text-xs text-muted-foreground">Active Jobs</div>
+            <div className="text-xl font-bold">{jobs?.length ?? 0}</div>
           </CardContent>
         </Card>
-
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Last Run Status</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {jobs?.[0]?.last_status ?? "N/A"}
-            </div>
+          <CardContent className="pt-4 pb-3">
+            <div className="text-xs text-muted-foreground">Last Status</div>
+            <div className="text-xl font-bold">{jobs?.[0]?.last_status ?? "N/A"}</div>
           </CardContent>
         </Card>
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Quick Start</CardTitle>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Quick Start</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2 text-sm text-muted-foreground">
-          <p>• Use the <strong>OHLC</strong> page to view and manage price data</p>
-          <p>• Use the <strong>Fundamentals</strong> page to view financial data</p>
-          <p>• Use the <strong>Tasks</strong> page to manage data fetchers</p>
+        <CardContent>
+          <div className="text-sm text-muted-foreground space-y-1">
+            <p>• <strong>OHLC</strong> — View price data with charts</p>
+            <p>• <strong>Fundamentals</strong> — Financial data</p>
+            <p>• <strong>Tasks</strong> — Manage data fetchers</p>
+          </div>
         </CardContent>
       </Card>
     </div>

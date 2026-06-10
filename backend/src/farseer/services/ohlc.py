@@ -20,20 +20,29 @@ class OHLCService:
         start: str | None = None,
         end: str | None = None,
         limit: int = 1000,
-        adjust: str = "original",
+        adjust: str = "backward",
     ) -> list[dict]:
         """
         Get OHLC data with optional price adjustment.
 
-        Adjustment types:
-        - original: Actual trading prices (no adjustment)
-        - forward: Forward adjusted (前复权) - recent prices real, historical adjusted DOWN
-        - backward: Backward adjusted (后复权) - historical prices real, recent adjusted UP
+        Stored data: 后复权 (backward-adjusted) prices with backward_factor.
 
-        backward_factor stored in DB:
-        - Historical: backward_factor = 1.0 (prices stay actual)
-        - Recent: backward_factor > 1.0 (prices adjusted UP)
+        Adjustment types:
+        - backward: 后复权 (stored prices, immutable)
+        - forward: 前复权 (for backtesting, recent prices actual)
+        - actual: Actual price at that time
         """
+        # Get latest backward_factor FIRST (for forward conversion)
+        latest_query = (
+            select(OHLC.backward_factor)
+            .where(OHLC.symbol == symbol, OHLC.timeframe == timeframe)
+            .order_by(OHLC.timestamp.desc())
+            .limit(1)
+        )
+        latest_result = await self.db.execute(latest_query)
+        latest_backward_factor = float(latest_result.scalar() or 1.0)
+
+        # Get requested data
         query = (
             select(OHLC)
             .where(OHLC.symbol == symbol, OHLC.timeframe == timeframe)
@@ -52,9 +61,6 @@ class OHLCService:
         if not rows:
             return []
 
-        # For forward adjustment, we need the latest backward_factor
-        latest_backward_factor = float(rows[-1].backward_factor)
-
         records = []
         for row in rows:
             record = {
@@ -70,8 +76,8 @@ class OHLCService:
 
             bf = float(row.backward_factor)
 
-            if adjust == "original":
-                # Actual trading prices (no adjustment)
+            if adjust == "backward":
+                # 后复权: stored prices (immutable)
                 record.update({
                     "open": float(row.open),
                     "high": float(row.high),
@@ -79,29 +85,29 @@ class OHLCService:
                     "close": float(row.close),
                 })
 
-            elif adjust == "backward":
-                # 后复权: price * backward_factor
-                # Historical prices stay actual, recent adjusted UP
+            elif adjust == "forward":
+                # 前复权: for backtesting
+                # forward = backward / backward_factor * latest_backward_factor
+                factor = latest_backward_factor / bf if bf else 1.0
                 record.update({
-                    "open": float(row.open) * bf,
-                    "high": float(row.high) * bf,
-                    "low": float(row.low) * bf,
-                    "close": float(row.close) * bf,
+                    "open": float(row.open) * factor,
+                    "high": float(row.high) * factor,
+                    "low": float(row.low) * factor,
+                    "close": float(row.close) * factor,
                 })
 
-            elif adjust == "forward":
-                # 前复权: price * (backward_factor / latest_backward_factor)
-                # Recent prices stay actual, historical adjusted DOWN
-                forward_factor = bf / latest_backward_factor if latest_backward_factor else 1.0
+            elif adjust == "actual":
+                # Actual price at that time
+                # actual = backward / backward_factor
                 record.update({
-                    "open": float(row.open) * forward_factor,
-                    "high": float(row.high) * forward_factor,
-                    "low": float(row.low) * forward_factor,
-                    "close": float(row.close) * forward_factor,
+                    "open": float(row.open) / bf if bf else float(row.open),
+                    "high": float(row.high) / bf if bf else float(row.high),
+                    "low": float(row.low) / bf if bf else float(row.low),
+                    "close": float(row.close) / bf if bf else float(row.close),
                 })
 
             else:
-                raise ValueError(f"Unknown adjust: {adjust}. Use 'original', 'forward', or 'backward'")
+                raise ValueError(f"Unknown adjust: {adjust}. Use 'backward', 'forward', or 'actual'")
 
             records.append(record)
 

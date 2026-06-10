@@ -14,18 +14,20 @@ export default function Layout() {
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur">
-        <div className="max-w-6xl mx-auto flex h-10 items-center px-4">
-          <Link to="/" className="mr-6 font-bold text-sm">Farseer</Link>
-          <nav className="flex items-center gap-4 text-sm">
+        <div className="max-w-6xl mx-auto flex h-12 items-center justify-between px-4">
+          <Link to="/" className="text-lg font-bold tracking-tight">
+            Farseer
+          </Link>
+          <nav className="flex items-center gap-1">
             {navItems.map((item) => (
               <Link
                 key={item.path}
                 to={item.path}
                 className={cn(
-                  "transition-colors hover:text-foreground/80",
+                  "px-3 py-1.5 rounded-md text-sm transition-colors",
                   location.pathname === item.path
-                    ? "text-foreground font-medium"
-                    : "text-foreground/60"
+                    ? "bg-primary text-primary-foreground font-medium"
+                    : "text-foreground/60 hover:text-foreground hover:bg-accent"
                 )}
               >
                 {item.label}

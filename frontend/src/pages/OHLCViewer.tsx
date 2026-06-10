@@ -17,7 +17,11 @@ export default function OHLCViewer() {
   const [inputValue, setInputValue] = useState("600519.SH")
   const [timeframe, setTimeframe] = useState("1d")
   const [adjust, setAdjust] = useState("backward")
-  const [startDate, setStartDate] = useState("")
+  const [startDate, setStartDate] = useState(() => {
+    const d = new Date()
+    d.setFullYear(d.getFullYear() - 1)
+    return d.toISOString().split('T')[0]
+  })
   const [endDate, setEndDate] = useState("")
 
   const { data, isLoading, refetch } = useQuery({

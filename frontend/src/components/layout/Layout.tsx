@@ -13,13 +13,10 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur">
-        <div className="container flex h-10 items-center px-4">
-          <Link to="/" className="mr-4 font-bold text-sm">
-            Farseer
-          </Link>
-          <nav className="flex items-center gap-3 text-sm">
+      <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur">
+        <div className="max-w-6xl mx-auto flex h-10 items-center px-4">
+          <Link to="/" className="mr-6 font-bold text-sm">Farseer</Link>
+          <nav className="flex items-center gap-4 text-sm">
             {navItems.map((item) => (
               <Link
                 key={item.path}
@@ -38,8 +35,7 @@ export default function Layout() {
         </div>
       </header>
 
-      {/* Main content */}
-      <main className="container px-4 py-4">
+      <main className="max-w-6xl mx-auto px-4 py-4">
         <Outlet />
       </main>
     </div>

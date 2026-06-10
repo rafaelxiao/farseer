@@ -40,7 +40,7 @@ export default function Tasks() {
       <h1 className="text-2xl font-bold">Tasks</h1>
 
       <Card>
-        <CardHeader className="pb-2">
+        <CardHeader className="py-3">
           <CardTitle className="text-base">Scheduled Jobs</CardTitle>
         </CardHeader>
         <CardContent>
@@ -79,7 +79,6 @@ export default function Tasks() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="h-7 px-2 text-xs"
                           onClick={() => triggerMutation.mutate(job.job_id)}
                           disabled={triggerMutation.isPending}
                         >
@@ -98,7 +97,7 @@ export default function Tasks() {
       </Card>
 
       <Card>
-        <CardHeader className="pb-2">
+        <CardHeader className="py-3">
           <CardTitle className="text-base">Recent Runs</CardTitle>
         </CardHeader>
         <CardContent>

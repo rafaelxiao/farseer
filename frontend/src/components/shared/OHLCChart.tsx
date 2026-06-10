@@ -1,5 +1,13 @@
-import { useEffect, useRef } from "react"
-import { createChart, ColorType, CrosshairMode, CandlestickSeries, HistogramSeries } from "lightweight-charts"
+import { useMemo } from "react"
+import {
+  ComposedChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts"
 import type { OHLC } from "@/types"
 
 interface OHLCChartProps {
@@ -8,92 +16,19 @@ interface OHLCChartProps {
 }
 
 export default function OHLCChart({ data, height = 400 }: OHLCChartProps) {
-  const chartContainerRef = useRef<HTMLDivElement>(null)
-  const chartRef = useRef<ReturnType<typeof createChart> | null>(null)
-
-  useEffect(() => {
-    if (!chartContainerRef.current || data.length === 0) return
-
-    // Clear previous chart
-    chartContainerRef.current.innerHTML = ""
-
-    const chart = createChart(chartContainerRef.current, {
-      layout: {
-        background: { type: ColorType.Solid, color: "#ffffff" },
-        textColor: "#333",
-        attributionLogo: false,
-      },
-      grid: {
-        vertLines: { color: "#f0f0f0" },
-        horzLines: { color: "#f0f0f0" },
-      },
-      crosshair: {
-        mode: CrosshairMode.Normal,
-      },
-      rightPriceScale: {
-        borderColor: "#d1d5db",
-      },
-      timeScale: {
-        borderColor: "#d1d5db",
-        timeVisible: true,
-      },
-      height,
-    })
-
-    chartRef.current = chart
-
-    // Candlestick series (v5 API)
-    const candlestickSeries = chart.addSeries(CandlestickSeries, {
-      upColor: "#ef4444",       // Red for up (Chinese convention)
-      downColor: "#22c55e",     // Green for down
-      borderUpColor: "#ef4444",
-      borderDownColor: "#22c55e",
-      wickUpColor: "#ef4444",
-      wickDownColor: "#22c55e",
-    })
-
-    // Sort data by timestamp
-    const sorted = [...data].sort(
-      (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-    )
-
-    candlestickSeries.setData(
-      sorted.map((d) => ({
-        time: (new Date(d.timestamp).getTime() / 1000) as any,
+  const chartData = useMemo(() => {
+    return [...data]
+      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+      .map((d) => ({
+        date: new Date(d.timestamp).toLocaleDateString(),
         open: d.open,
         high: d.high,
         low: d.low,
         close: d.close,
+        volume: d.volume,
+        isUp: d.close >= d.open,
       }))
-    )
-
-    // Volume series (v5 API)
-    const volumeSeries = chart.addSeries(HistogramSeries, {
-      color: "#6b7280",
-      priceFormat: { type: "volume" },
-      priceScaleId: "volume",
-    })
-
-    chart.priceScale("volume").applyOptions({
-      scaleMargins: { top: 0.8, bottom: 0 },
-    })
-
-    volumeSeries.setData(
-      sorted.map((d) => ({
-        time: (new Date(d.timestamp).getTime() / 1000) as any,
-        value: d.volume,
-        color: d.close >= d.open ? "rgba(239, 68, 68, 0.3)" : "rgba(34, 197, 94, 0.3)",
-      }))
-    )
-
-    // Fit content
-    chart.timeScale().fitContent()
-
-    // Cleanup
-    return () => {
-      chart.remove()
-    }
-  }, [data, height])
+  }, [data])
 
   if (data.length === 0) {
     return (
@@ -103,5 +38,70 @@ export default function OHLCChart({ data, height = 400 }: OHLCChartProps) {
     )
   }
 
-  return <div ref={chartContainerRef} />
+  return (
+    <div className="space-y-4">
+      {/* OHLC Chart */}
+      <ResponsiveContainer width="100%" height={height}>
+        <ComposedChart data={chartData}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+          <XAxis
+            dataKey="date"
+            tick={{ fontSize: 11 }}
+            interval="preserveStartEnd"
+          />
+          <YAxis
+            domain={["auto", "auto"]}
+            tick={{ fontSize: 11 }}
+          />
+          <Tooltip
+            content={({ active, payload }) => {
+              if (!active || !payload?.length) return null
+              const d = payload[0].payload
+              return (
+                <div className="bg-white border rounded p-2 shadow text-xs">
+                  <div className="font-medium">{d.date}</div>
+                  <div>O: {d.open?.toFixed(2)}</div>
+                  <div>H: {d.high?.toFixed(2)}</div>
+                  <div>L: {d.low?.toFixed(2)}</div>
+                  <div>C: {d.close?.toFixed(2)}</div>
+                  <div>V: {d.volume?.toLocaleString()}</div>
+                </div>
+              )
+            }}
+          />
+          <Bar
+            dataKey="high"
+            fill="transparent"
+            stroke="transparent"
+          />
+        </ComposedChart>
+      </ResponsiveContainer>
+
+      {/* Volume Chart */}
+      <ResponsiveContainer width="100%" height={100}>
+        <ComposedChart data={chartData}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+          <XAxis dataKey="date" tick={false} />
+          <YAxis tick={{ fontSize: 10 }} />
+          <Tooltip
+            content={({ active, payload }) => {
+              if (!active || !payload?.length) return null
+              const d = payload[0].payload
+              return (
+                <div className="bg-white border rounded p-2 shadow text-xs">
+                  <div>{d.date}</div>
+                  <div>Volume: {d.volume?.toLocaleString()}</div>
+                </div>
+              )
+            }}
+          />
+          <Bar
+            dataKey="volume"
+            fill="#6b7280"
+            opacity={0.5}
+          />
+        </ComposedChart>
+      </ResponsiveContainer>
+    </div>
+  )
 }

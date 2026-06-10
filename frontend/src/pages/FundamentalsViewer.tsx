@@ -2,6 +2,7 @@ import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { TextInput } from "@/components/ui/text-input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { fundamentalsApi } from "@/api/fundamentals"
 
@@ -23,15 +24,15 @@ export default function FundamentalsViewer() {
       <h1 className="text-2xl font-bold">Fundamentals Viewer</h1>
 
       <Card>
-        <CardContent className="pt-4">
+        <CardContent className="py-3">
           <div className="flex gap-2">
-            <input
-              type="text"
+            <TextInput
+              size="sm"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-              className="flex h-9 w-40 rounded-md border border-input bg-background px-3 py-1 text-sm"
               placeholder="Symbol (empty=all)"
+              className="w-40"
             />
             <Button size="sm" onClick={handleSearch}>Search</Button>
           </div>
@@ -39,7 +40,7 @@ export default function FundamentalsViewer() {
       </Card>
 
       <Card>
-        <CardHeader className="pb-2">
+        <CardHeader className="py-3">
           <CardTitle className="text-base">Fundamentals Data</CardTitle>
         </CardHeader>
         <CardContent>

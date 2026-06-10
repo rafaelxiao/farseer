@@ -3,10 +3,19 @@ import { useQuery } from "@tanstack/react-query"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Select } from "@/components/ui/select"
+import { DateInput } from "@/components/ui/date-input"
+import { TextInput } from "@/components/ui/text-input"
 import { ohlcApi } from "@/api/ohlc"
 import OHLCChart from "@/components/shared/OHLCChart"
 
-const ADJUSTMENTS = [
+const TIMEFRAME_OPTIONS = [
+  { value: "1d", label: "1d" },
+  { value: "1w", label: "1w (soon)", disabled: true },
+  { value: "1M", label: "1M (soon)", disabled: true },
+]
+
+const ADJUST_OPTIONS = [
   { value: "original", label: "Original" },
   { value: "forward", label: "Forward" },
   { value: "backward", label: "Backward" },
@@ -40,72 +49,49 @@ export default function OHLCViewer() {
   const latest = data?.[data.length - 1]
 
   return (
-    <div className="max-w-6xl mx-auto space-y-4">
+    <div className="w-full max-w-6xl mx-auto space-y-4">
       <h1 className="text-2xl font-bold">OHLC Viewer</h1>
 
       {/* Filters */}
       <Card>
-        <CardContent className="pt-4">
-          <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-end flex-wrap">
-            {/* Symbol */}
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                className="flex h-9 w-32 rounded-md border border-input bg-background px-3 py-1 text-sm"
-                placeholder="600519.SH"
-              />
-              <Button size="sm" onClick={handleSearch}>Search</Button>
-            </div>
+        <CardContent className="py-3">
+          <div className="flex flex-wrap items-end gap-3">
+            <TextInput
+              size="sm"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+              placeholder="600519.SH"
+              className="w-28"
+            />
+            <Button size="sm" onClick={handleSearch}>Search</Button>
 
-            {/* Timeframe dropdown */}
-            <div className="flex items-center gap-2">
-              <label className="text-xs text-muted-foreground">TF</label>
-              <select
-                value={timeframe}
-                onChange={(e) => setTimeframe(e.target.value)}
-                className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+            <div className="h-6 w-px bg-border" />
+
+            <Select
+              size="sm"
+              options={TIMEFRAME_OPTIONS}
+              value={timeframe}
+              onChange={(e) => setTimeframe(e.target.value)}
+            />
+
+            <div className="h-6 w-px bg-border" />
+
+            <DateInput size="sm" label="From" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+            <DateInput size="sm" label="To" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+
+            <div className="h-6 w-px bg-border" />
+
+            {ADJUST_OPTIONS.map((adj) => (
+              <Button
+                key={adj.value}
+                variant={adjust === adj.value ? "default" : "outline"}
+                size="sm"
+                onClick={() => setAdjust(adj.value)}
               >
-                <option value="1d">1d</option>
-                <option value="1w" disabled>1w (soon)</option>
-                <option value="1M" disabled>1M (soon)</option>
-              </select>
-            </div>
-
-            {/* Date range */}
-            <div className="flex items-center gap-2">
-              <label className="text-xs text-muted-foreground">From</label>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="h-9 rounded-md border border-input bg-background px-2 text-sm"
-              />
-              <label className="text-xs text-muted-foreground">To</label>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="h-9 rounded-md border border-input bg-background px-2 text-sm"
-              />
-            </div>
-
-            {/* Adjustment */}
-            <div className="flex gap-1">
-              {ADJUSTMENTS.map((adj) => (
-                <Button
-                  key={adj.value}
-                  variant={adjust === adj.value ? "default" : "outline"}
-                  size="sm"
-                  className="h-8 px-2 text-xs"
-                  onClick={() => setAdjust(adj.value)}
-                >
-                  {adj.label}
-                </Button>
-              ))}
-            </div>
+                {adj.label}
+              </Button>
+            ))}
           </div>
         </CardContent>
       </Card>
@@ -114,7 +100,7 @@ export default function OHLCViewer() {
       {latest && (
         <div className="grid grid-cols-3 gap-3">
           <Card>
-            <CardContent className="pt-4 pb-3">
+            <CardContent className="py-3">
               <div className="text-xs text-muted-foreground">Latest Close</div>
               <div className="text-xl font-bold">{latest.close.toFixed(2)}</div>
               <div className="text-xs text-muted-foreground">
@@ -123,14 +109,14 @@ export default function OHLCViewer() {
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="pt-4 pb-3">
+            <CardContent className="py-3">
               <div className="text-xs text-muted-foreground">Records</div>
               <div className="text-xl font-bold">{data?.length.toLocaleString()}</div>
               <div className="text-xs text-muted-foreground">{timeframe} bars</div>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="pt-4 pb-3">
+            <CardContent className="py-3">
               <div className="text-xs text-muted-foreground">Backward Factor</div>
               <div className="text-xl font-bold">{latest.backward_factor.toFixed(4)}</div>
               <div className="text-xs text-muted-foreground">from IPO</div>
@@ -141,7 +127,7 @@ export default function OHLCViewer() {
 
       {/* Chart */}
       <Card>
-        <CardHeader className="pb-2">
+        <CardHeader className="py-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base">
               {symbol} - {timeframe}

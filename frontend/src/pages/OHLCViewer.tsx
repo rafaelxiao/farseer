@@ -2,25 +2,36 @@ import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
 import { ohlcApi } from "@/api/ohlc"
+import OHLCChart from "@/components/shared/OHLCChart"
 
 const TIMEFRAMES = ["1m", "5m", "15m", "1h", "4h", "1d", "1w"]
+const ADJUSTMENTS = [
+  { value: "original", label: "Original" },
+  { value: "forward", label: "Forward (前复权)" },
+  { value: "backward", label: "Backward (后复权)" },
+]
 
 export default function OHLCViewer() {
-  const [symbol, setSymbol] = useState("AAPL")
+  const [symbol, setSymbol] = useState("600519.SH")
+  const [inputValue, setInputValue] = useState("600519.SH")
   const [timeframe, setTimeframe] = useState("1d")
-  const [inputValue, setInputValue] = useState("AAPL")
+  const [adjust, setAdjust] = useState("backward")
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ["ohlc", symbol, timeframe],
-    queryFn: () => ohlcApi.get({ symbol, timeframe, limit: 100 }),
+    queryKey: ["ohlc", symbol, timeframe, adjust],
+    queryFn: () => ohlcApi.get({ symbol, timeframe, limit: 2000, adjust }),
     enabled: !!symbol,
   })
 
   const handleSearch = () => {
     setSymbol(inputValue.toUpperCase())
   }
+
+  // Summary stats
+  const latest = data?.[data.length - 1]
+  const oldest = data?.[0]
 
   return (
     <div className="space-y-6">
@@ -29,19 +40,24 @@ export default function OHLCViewer() {
       {/* Filters */}
       <Card>
         <CardContent className="pt-6">
-          <div className="flex gap-4 items-end">
+          <div className="flex flex-wrap gap-4 items-end">
+            {/* Symbol input */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Symbol</label>
-              <input
-                type="text"
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                placeholder="AAPL"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                  className="flex h-10 w-40 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  placeholder="600519.SH"
+                />
+                <Button onClick={handleSearch}>Search</Button>
+              </div>
             </div>
 
+            {/* Timeframe */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Timeframe</label>
               <div className="flex gap-1">
@@ -58,46 +74,88 @@ export default function OHLCViewer() {
               </div>
             </div>
 
-            <Button onClick={handleSearch}>Search</Button>
+            {/* Adjustment */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Adjustment</label>
+              <div className="flex gap-1">
+                {ADJUSTMENTS.map((adj) => (
+                  <Button
+                    key={adj.value}
+                    variant={adjust === adj.value ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setAdjust(adj.value)}
+                  >
+                    {adj.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Data Table */}
+      {/* Summary */}
+      {latest && (
+        <div className="grid gap-4 md:grid-cols-4">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-sm text-muted-foreground">Latest Close</div>
+              <div className="text-2xl font-bold">{latest.close.toFixed(2)}</div>
+              <div className="text-xs text-muted-foreground">
+                {new Date(latest.timestamp).toLocaleDateString()}
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-sm text-muted-foreground">Records</div>
+              <div className="text-2xl font-bold">{data?.length.toLocaleString()}</div>
+              <div className="text-xs text-muted-foreground">{timeframe} bars</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-sm text-muted-foreground">Date Range</div>
+              <div className="text-sm font-medium">
+                {oldest && new Date(oldest.timestamp).toLocaleDateString()}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                to {latest && new Date(latest.timestamp).toLocaleDateString()}
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-sm text-muted-foreground">Backward Factor</div>
+              <div className="text-2xl font-bold">{latest.backward_factor.toFixed(4)}</div>
+              <div className="text-xs text-muted-foreground">cumulative from IPO</div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Chart */}
       <Card>
         <CardHeader>
-          <CardTitle>{symbol} - {timeframe}</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>
+              {symbol} - {timeframe}
+              <Badge variant="outline" className="ml-2">
+                {adjust}
+              </Badge>
+            </CardTitle>
+            <div className="text-sm text-muted-foreground">
+              {data?.length.toLocaleString()} records
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <p className="text-muted-foreground">Loading...</p>
-          ) : data && data.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Timestamp</TableHead>
-                  <TableHead className="text-right">Open</TableHead>
-                  <TableHead className="text-right">High</TableHead>
-                  <TableHead className="text-right">Low</TableHead>
-                  <TableHead className="text-right">Close</TableHead>
-                  <TableHead className="text-right">Volume</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.map((row) => (
-                  <TableRow key={row.id}>
-                    <TableCell>{new Date(row.timestamp).toLocaleString()}</TableCell>
-                    <TableCell className="text-right">{row.open.toFixed(2)}</TableCell>
-                    <TableCell className="text-right">{row.high.toFixed(2)}</TableCell>
-                    <TableCell className="text-right">{row.low.toFixed(2)}</TableCell>
-                    <TableCell className="text-right">{row.close.toFixed(2)}</TableCell>
-                    <TableCell className="text-right">{row.volume.toLocaleString()}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <div className="flex items-center justify-center h-[400px] text-muted-foreground">
+              Loading...
+            </div>
           ) : (
-            <p className="text-muted-foreground">No data found</p>
+            <OHLCChart data={data || []} height={500} />
           )}
         </CardContent>
       </Card>

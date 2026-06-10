@@ -1,13 +1,4 @@
 import { useMemo } from "react"
-import {
-  ComposedChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts"
 import type { OHLC } from "@/types"
 
 interface OHLCChartProps {
@@ -19,15 +10,7 @@ export default function OHLCChart({ data, height = 400 }: OHLCChartProps) {
   const chartData = useMemo(() => {
     return [...data]
       .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-      .map((d) => ({
-        date: new Date(d.timestamp).toLocaleDateString(),
-        open: d.open,
-        high: d.high,
-        low: d.low,
-        close: d.close,
-        volume: d.volume,
-        isUp: d.close >= d.open,
-      }))
+      .slice(-100) // Show last 100 records for now
   }, [data])
 
   if (data.length === 0) {
@@ -38,70 +21,53 @@ export default function OHLCChart({ data, height = 400 }: OHLCChartProps) {
     )
   }
 
+  // Simple table view for now
   return (
     <div className="space-y-4">
-      {/* OHLC Chart */}
-      <ResponsiveContainer width="100%" height={height}>
-        <ComposedChart data={chartData}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-          <XAxis
-            dataKey="date"
-            tick={{ fontSize: 11 }}
-            interval="preserveStartEnd"
-          />
-          <YAxis
-            domain={["auto", "auto"]}
-            tick={{ fontSize: 11 }}
-          />
-          <Tooltip
-            content={({ active, payload }) => {
-              if (!active || !payload?.length) return null
-              const d = payload[0].payload
+      <div className="text-sm text-muted-foreground">
+        Showing {chartData.length} of {data.length} records
+      </div>
+      
+      <div className="overflow-auto max-h-[500px]">
+        <table className="w-full text-xs">
+          <thead className="sticky top-0 bg-background">
+            <tr className="border-b">
+              <th className="text-left p-2">Date</th>
+              <th className="text-right p-2">Open</th>
+              <th className="text-right p-2">High</th>
+              <th className="text-right p-2">Low</th>
+              <th className="text-right p-2">Close</th>
+              <th className="text-right p-2">Volume</th>
+              <th className="text-right p-2">Change</th>
+            </tr>
+          </thead>
+          <tbody>
+            {chartData.map((d, i) => {
+              const prev = i > 0 ? chartData[i - 1] : null
+              const change = prev ? ((d.close - prev.close) / prev.close * 100) : 0
+              const isUp = change >= 0
+              
               return (
-                <div className="bg-white border rounded p-2 shadow text-xs">
-                  <div className="font-medium">{d.date}</div>
-                  <div>O: {d.open?.toFixed(2)}</div>
-                  <div>H: {d.high?.toFixed(2)}</div>
-                  <div>L: {d.low?.toFixed(2)}</div>
-                  <div>C: {d.close?.toFixed(2)}</div>
-                  <div>V: {d.volume?.toLocaleString()}</div>
-                </div>
+                <tr key={d.id} className="border-b hover:bg-muted/50">
+                  <td className="p-2">
+                    {new Date(d.timestamp).toLocaleDateString()}
+                  </td>
+                  <td className="text-right p-2">{d.open.toFixed(2)}</td>
+                  <td className="text-right p-2">{d.high.toFixed(2)}</td>
+                  <td className="text-right p-2">{d.low.toFixed(2)}</td>
+                  <td className="text-right p-2 font-medium">{d.close.toFixed(2)}</td>
+                  <td className="text-right p-2 text-muted-foreground">
+                    {d.volume.toLocaleString()}
+                  </td>
+                  <td className={`text-right p-2 ${isUp ? 'text-red-600' : 'text-green-600'}`}>
+                    {change !== 0 ? `${isUp ? '+' : ''}${change.toFixed(2)}%` : '-'}
+                  </td>
+                </tr>
               )
-            }}
-          />
-          <Bar
-            dataKey="high"
-            fill="transparent"
-            stroke="transparent"
-          />
-        </ComposedChart>
-      </ResponsiveContainer>
-
-      {/* Volume Chart */}
-      <ResponsiveContainer width="100%" height={100}>
-        <ComposedChart data={chartData}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-          <XAxis dataKey="date" tick={false} />
-          <YAxis tick={{ fontSize: 10 }} />
-          <Tooltip
-            content={({ active, payload }) => {
-              if (!active || !payload?.length) return null
-              const d = payload[0].payload
-              return (
-                <div className="bg-white border rounded p-2 shadow text-xs">
-                  <div>{d.date}</div>
-                  <div>Volume: {d.volume?.toLocaleString()}</div>
-                </div>
-              )
-            }}
-          />
-          <Bar
-            dataKey="volume"
-            fill="#6b7280"
-            opacity={0.5}
-          />
-        </ComposedChart>
-      </ResponsiveContainer>
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }

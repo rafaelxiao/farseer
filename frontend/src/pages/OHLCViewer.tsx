@@ -6,11 +6,10 @@ import { Badge } from "@/components/ui/badge"
 import { ohlcApi } from "@/api/ohlc"
 import OHLCChart from "@/components/shared/OHLCChart"
 
-const TIMEFRAMES = ["1m", "5m", "15m", "1h", "4h", "1d", "1w"]
 const ADJUSTMENTS = [
   { value: "original", label: "Original" },
-  { value: "forward", label: "Forward (前复权)" },
-  { value: "backward", label: "Backward (后复权)" },
+  { value: "forward", label: "Forward" },
+  { value: "backward", label: "Backward" },
 ]
 
 export default function OHLCViewer() {
@@ -18,10 +17,19 @@ export default function OHLCViewer() {
   const [inputValue, setInputValue] = useState("600519.SH")
   const [timeframe, setTimeframe] = useState("1d")
   const [adjust, setAdjust] = useState("backward")
+  const [startDate, setStartDate] = useState("")
+  const [endDate, setEndDate] = useState("")
 
   const { data, isLoading } = useQuery({
-    queryKey: ["ohlc", symbol, timeframe, adjust],
-    queryFn: () => ohlcApi.get({ symbol, timeframe, limit: 2000, adjust }),
+    queryKey: ["ohlc", symbol, timeframe, adjust, startDate, endDate],
+    queryFn: () => ohlcApi.get({
+      symbol,
+      timeframe,
+      limit: 5000,
+      adjust,
+      start: startDate || undefined,
+      end: endDate || undefined,
+    }),
     enabled: !!symbol,
   })
 
@@ -30,42 +38,61 @@ export default function OHLCViewer() {
   }
 
   const latest = data?.[data.length - 1]
-  const oldest = data?.[0]
 
   return (
-    <div className="space-y-4">
+    <div className="max-w-6xl mx-auto space-y-4">
       <h1 className="text-2xl font-bold">OHLC Viewer</h1>
 
       {/* Filters */}
       <Card>
         <CardContent className="pt-4">
-          <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-end">
-            <div className="flex gap-2 w-full sm:w-auto">
+          <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-end flex-wrap">
+            {/* Symbol */}
+            <div className="flex gap-2">
               <input
                 type="text"
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                className="flex h-9 w-full sm:w-40 rounded-md border border-input bg-background px-3 py-1 text-sm"
+                className="flex h-9 w-32 rounded-md border border-input bg-background px-3 py-1 text-sm"
                 placeholder="600519.SH"
               />
               <Button size="sm" onClick={handleSearch}>Search</Button>
             </div>
 
-            <div className="flex flex-wrap gap-1">
-              {TIMEFRAMES.map((tf) => (
-                <Button
-                  key={tf}
-                  variant={timeframe === tf ? "default" : "outline"}
-                  size="sm"
-                  className="h-8 px-2 text-xs"
-                  onClick={() => setTimeframe(tf)}
-                >
-                  {tf}
-                </Button>
-              ))}
+            {/* Timeframe dropdown */}
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-muted-foreground">TF</label>
+              <select
+                value={timeframe}
+                onChange={(e) => setTimeframe(e.target.value)}
+                className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+              >
+                <option value="1d">1d</option>
+                <option value="1w" disabled>1w (soon)</option>
+                <option value="1M" disabled>1M (soon)</option>
+              </select>
             </div>
 
+            {/* Date range */}
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-muted-foreground">From</label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+              />
+              <label className="text-xs text-muted-foreground">To</label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+              />
+            </div>
+
+            {/* Adjustment */}
             <div className="flex gap-1">
               {ADJUSTMENTS.map((adj) => (
                 <Button
@@ -85,7 +112,7 @@ export default function OHLCViewer() {
 
       {/* Summary */}
       {latest && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <Card>
             <CardContent className="pt-4 pb-3">
               <div className="text-xs text-muted-foreground">Latest Close</div>
@@ -104,17 +131,6 @@ export default function OHLCViewer() {
           </Card>
           <Card>
             <CardContent className="pt-4 pb-3">
-              <div className="text-xs text-muted-foreground">Date Range</div>
-              <div className="text-sm font-medium">
-                {oldest ? new Date(oldest.timestamp).toLocaleDateString() : "-"}
-              </div>
-              <div className="text-xs text-muted-foreground">
-                → {latest ? new Date(latest.timestamp).toLocaleDateString() : "-"}
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-4 pb-3">
               <div className="text-xs text-muted-foreground">Backward Factor</div>
               <div className="text-xl font-bold">{latest.backward_factor.toFixed(4)}</div>
               <div className="text-xs text-muted-foreground">from IPO</div>
@@ -129,9 +145,7 @@ export default function OHLCViewer() {
           <div className="flex items-center justify-between">
             <CardTitle className="text-base">
               {symbol} - {timeframe}
-              <Badge variant="outline" className="ml-2 text-xs">
-                {adjust}
-              </Badge>
+              <Badge variant="outline" className="ml-2 text-xs">{adjust}</Badge>
             </CardTitle>
             <div className="text-xs text-muted-foreground">
               {data?.length.toLocaleString()} records

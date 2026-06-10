@@ -7,6 +7,7 @@ export interface OHLCQueryParams {
   start?: string
   end?: string
   limit?: number
+  adjust?: string
 }
 
 export const ohlcApi = {
@@ -16,6 +17,7 @@ export const ohlcApi = {
     if (params.start) searchParams.set("start", params.start)
     if (params.end) searchParams.set("end", params.end)
     if (params.limit) searchParams.set("limit", String(params.limit))
+    if (params.adjust) searchParams.set("adjust", params.adjust)
     return api.get<OHLC[]>(`/ohlc/?${searchParams}`)
   },
 

@@ -10,6 +10,9 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  optimizeDeps: {
+    include: ["lightweight-charts"],
+  },
   server: {
     host: "0.0.0.0",
     port: parseInt(process.env.VITE_PORT || "5173"),

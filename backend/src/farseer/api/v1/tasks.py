@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -31,7 +31,6 @@ async def get_jobs(db: AsyncSession = Depends(get_db)):
     """List all registered jobs with summary info."""
     jobs = []
     for job in scheduler.get_jobs():
-        # Get last run info
         last_run_query = (
             select(TaskRun)
             .where(TaskRun.job_id == job.id)
@@ -41,7 +40,6 @@ async def get_jobs(db: AsyncSession = Depends(get_db)):
         result = await db.execute(last_run_query)
         last_run = result.scalar_one_or_none()
 
-        # Get total runs count
         count_query = select(func.count(TaskRun.id)).where(TaskRun.job_id == job.id)
         total = (await db.execute(count_query)).scalar() or 0
 
@@ -56,10 +54,13 @@ async def get_jobs(db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/trigger/{job_id}")
-async def trigger_job(job_id: str, db: AsyncSession = Depends(get_db)):
+async def trigger_job(job_id: str, background_tasks: BackgroundTasks):
     """Manually trigger a job."""
     job = scheduler.get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail=f"Job '{job_id}' not found")
-    job.modify(next_run_time=job.func.__self__._scheduler.get_now())
+    
+    # Run the job in background
+    background_tasks.add_task(job.func)
+    
     return {"status": "triggered", "job_id": job_id}

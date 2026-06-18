@@ -30,6 +30,33 @@ def _format_date(ts, symbol: str) -> str:
     return ts.astimezone(_market_tz(symbol)).strftime("%Y-%m-%d")
 
 
+def _parse_date(value: str | None, symbol: str) -> datetime | None:
+    """Parse date string to timezone-aware datetime in the market timezone.
+    
+    Accepts YYYYMMDD, YYYY-MM-DD, or full ISO formats.
+    Date-only values get set to market open (00:00) in the market's timezone.
+    """
+    if not value:
+        return None
+    value = value.strip()
+    
+    # Normalize to ISO
+    if len(value) == 8 and value.isdigit():
+        value = f"{value[:4]}-{value[4:6]}-{value[6:8]}"
+    
+    # Parse
+    try:
+        dt = datetime.fromisoformat(value)
+    except ValueError:
+        return None
+    
+    # Make timezone-aware using market timezone
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=_market_tz(symbol))
+    
+    return dt
+
+
 def safe_float(val, default=0.0):
     """Convert to float, replacing NaN/Inf with default."""
     try:
@@ -47,7 +74,8 @@ class OHLCService:
 
     async def get_ohlc(
         self,
-        symbol: str,
+        symbol: str | None = None,
+        symbols: str | None = None,
         timeframe: str = "1d",
         start: str | None = None,
         end: str | None = None,
@@ -58,6 +86,8 @@ class OHLCService:
         """
         Get OHLC data with optional price adjustment.
 
+        Accepts comma-separated symbols for batch queries.
+
         Stored data: 后复权 (backward-adjusted) prices with backward_factor.
 
         Adjustment types:
@@ -65,6 +95,43 @@ class OHLCService:
         - forward: 前复权 (for backtesting, recent prices actual)
         - actual: Actual price at that time
         """
+        # Resolve symbols: prefer comma-separated `symbols`, fall back to single `symbol`
+        sym_list: list[str]
+        if symbols:
+            sym_list = [s.strip() for s in symbols.split(",") if s.strip()]
+        elif symbol:
+            sym_list = [symbol]
+        else:
+            raise ValueError("Either 'symbol' or 'symbols' parameter is required")
+
+        # Normalize dates for first symbol (all symbols share same timezone assumption)
+        first_sym = sym_list[0]
+        start_dt = _parse_date(start, first_sym)
+        end_dt = _parse_date(end, first_sym)
+        # Make end inclusive: midnight → 23:59:59.999999 of same day
+        if end_dt and end_dt.hour == 0 and end_dt.minute == 0 and end_dt.second == 0:
+            from datetime import timedelta
+            end_dt = end_dt + timedelta(days=1, microseconds=-1)
+
+        async def _fetch_one(sym: str) -> list[dict]:
+            return await self._get_ohlc_single(sym, timeframe, start_dt, end_dt, limit, adjust, data_source)
+
+        results = []
+        for sym in sym_list:
+            results.extend(await _fetch_one(sym))
+        return results
+
+    async def _get_ohlc_single(
+        self,
+        symbol: str,
+        timeframe: str,
+        start: datetime | None,
+        end: datetime | None,
+        limit: int,
+        adjust: str,
+        data_source: str,
+    ) -> list[dict]:
+        """Fetch OHLC for a single symbol."""
         # Get latest backward_factor FIRST (for forward conversion)
         latest_query = (
             select(OHLC.backward_factor)
@@ -82,7 +149,7 @@ class OHLCService:
             query = (
                 select(OHLC)
                 .where(OHLC.symbol == symbol, OHLC.data_source == data_source, OHLC.timeframe == timeframe)
-                .where(OHLC.timestamp <= datetime.fromisoformat(end))
+                .where(OHLC.timestamp <= end)
                 .order_by(OHLC.timestamp.desc())
                 .limit(limit)
             )
@@ -97,9 +164,9 @@ class OHLCService:
                 .limit(limit)
             )
             if start:
-                query = query.where(OHLC.timestamp >= datetime.fromisoformat(start))
+                query = query.where(OHLC.timestamp >= start)
             if end:
-                query = query.where(OHLC.timestamp <= datetime.fromisoformat(end))
+                query = query.where(OHLC.timestamp <= end)
             result = await self.db.execute(query)
             rows = list(result.scalars().all())
         else:

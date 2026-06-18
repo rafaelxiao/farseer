@@ -30,14 +30,17 @@ export default defineConfig(({ mode }) => {
         [`${base}docs`]: {
           target: `http://localhost:${backendPort}`,
           changeOrigin: true,
+          rewrite: (path: string) => path.replace(new RegExp(`^${base}`), "/"),
         },
         [`${base}openapi.json`]: {
           target: `http://localhost:${backendPort}`,
           changeOrigin: true,
+          rewrite: (path: string) => path.replace(new RegExp(`^${base}`), "/"),
         },
         [`${base}redoc`]: {
           target: `http://localhost:${backendPort}`,
           changeOrigin: true,
+          rewrite: (path: string) => path.replace(new RegExp(`^${base}`), "/"),
         },
       },
     },

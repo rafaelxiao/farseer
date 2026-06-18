@@ -23,6 +23,7 @@ from farseer.fetchers.registry import FetcherRegistry
 from farseer.schemas.ohlc import OHLCBase
 from farseer.config import settings
 from farseer.symbols.utils import is_etf
+from farseer.universe.sets import INDICES
 
 
 _executor = ThreadPoolExecutor(max_workers=2)
@@ -123,6 +124,34 @@ class TushareFetcher(BaseFetcher):
 
         return records
 
+    def _fetch_index(self, ts_code: str, start_date: str, end_date: str) -> list[dict]:
+        """Fetch index data using index_daily. No adjustment factor."""
+        from farseer.utils.tushare import get_tushare_pro
+
+        pro = get_tushare_pro()
+
+        df = pro.index_daily(ts_code=ts_code, start_date=start_date, end_date=end_date)
+
+        if df is None or len(df) == 0:
+            return []
+
+        df = df.sort_values("trade_date")
+
+        records = []
+        for _, row in df.iterrows():
+            records.append({
+                "date": row["trade_date"],
+                "open": float(row["open"]) if row["open"] else 0,
+                "high": float(row["high"]) if row["high"] else 0,
+                "low": float(row["low"]) if row["low"] else 0,
+                "close": float(row["close"]) if row["close"] else 0,
+                "volume": int(float(row["vol"])) if row["vol"] else 0,
+                "amount": float(row["amount"]) if row["amount"] else 0,
+                "backward_factor": 1.0,
+            })
+
+        return records
+
     def _fetch_sync(
         self,
         symbol: str,
@@ -142,7 +171,9 @@ class TushareFetcher(BaseFetcher):
             # Rate limit: wait between requests
             time.sleep(0.6)  # ~170 requests/min, under 200/min limit
             
-            if is_etf(symbol):
+            if symbol in INDICES:
+                return self._fetch_index(ts_code, start_date, end_date)
+            elif is_etf(symbol):
                 return self._fetch_etf(ts_code, start_date, end_date)
             else:
                 return self._fetch_stock(ts_code, start_date, end_date)

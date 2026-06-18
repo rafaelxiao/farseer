@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
-from farseer.universe.sets import CSI300, CSI500, ETF_TOP100
+from farseer.universe.sets import CSI300, CSI500, ETF_TOP100, INDICES
 
 logger = logging.getLogger(__name__)
 
@@ -182,6 +182,48 @@ def fetch_ohlc(pro, conn, cur, symbols: list[str]) -> tuple[int, int]:
             conn.rollback()
     
     logger.info(f"OHLC complete: {success} success, {failed} failed")
+    return success, failed
+
+
+def fetch_index_ohlc(pro, conn, cur, symbols: list[str]) -> tuple[int, int]:
+    """Fetch index OHLC data. No adjustment factors — simpler than stocks."""
+    logger.info(f"=== Fetching Index OHLC for {len(symbols)} indices ===")
+    
+    end_date = datetime.now().strftime("%Y%m%d")
+    start_date = (datetime.now() - timedelta(days=4)).strftime("%Y%m%d")
+    
+    success = 0
+    failed = 0
+    
+    for symbol in symbols:
+        try:
+            time.sleep(0.4)
+            df = pro.index_daily(ts_code=symbol, start_date=start_date, end_date=end_date)
+            
+            if df is not None and len(df) > 0:
+                for _, row in df.iterrows():
+                    trade_date = row['trade_date']
+                    date_str = f"{trade_date[:4]}-{trade_date[4:6]}-{trade_date[6:8]}"
+                    cur.execute("""
+                        INSERT INTO ohlc (symbol, data_source, timeframe, timestamp, open, high, low, close, volume, backward_factor, data)
+                        VALUES (%s, 'tushare', '1d', %s, %s, %s, %s, %s, %s, 1.0, %s)
+                        ON CONFLICT (symbol, data_source, timeframe, timestamp) DO UPDATE SET
+                            open = EXCLUDED.open, high = EXCLUDED.high, low = EXCLUDED.low,
+                            close = EXCLUDED.close, volume = EXCLUDED.volume,
+                            backward_factor = EXCLUDED.backward_factor, data = EXCLUDED.data
+                    """, (symbol, date_str, float(row['open']), float(row['high']),
+                          float(row['low']), float(row['close']), int(float(row.get('vol', 0))),
+                          json.dumps({"amount": float(row.get('amount', 0)), "source": "tushare"})))
+                conn.commit()
+                success += 1
+            else:
+                failed += 1
+        except Exception as e:
+            logger.error(f"Index failed {symbol}: {e}")
+            failed += 1
+            conn.rollback()
+    
+    logger.info(f"Index OHLC complete: {success} success, {failed} failed")
     return success, failed
 
 
@@ -360,6 +402,9 @@ def daily_fetch_job():
         # Fetch OHLC
         ohlc_success, ohlc_failed = fetch_ohlc(pro, conn, cur, symbols)
         
+        # Fetch Index OHLC
+        idx_success, idx_failed = fetch_index_ohlc(pro, conn, cur, INDICES)
+        
         # Fetch Stock Fundamentals
         fund_success, fund_failed = fetch_stock_fundamentals(pro, conn, cur, stock_symbols)
         
@@ -369,6 +414,7 @@ def daily_fetch_job():
         # Log success
         result = {
             "ohlc": {"success": ohlc_success, "failed": ohlc_failed},
+            "index": {"success": idx_success, "failed": idx_failed},
             "fundamentals": {"success": fund_success, "failed": fund_failed},
             "etf": {"success": etf_success, "failed": etf_failed},
         }

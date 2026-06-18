@@ -64,7 +64,7 @@ export default function Layout() {
                 item.external ? (
                   <a
                     key={item.path}
-                    href="/farseer/dev/docs"
+                    href={`${import.meta.env.BASE_URL}docs`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="px-3 py-1.5 rounded-md text-sm text-foreground/60 hover:text-foreground hover:bg-accent transition-colors"

@@ -26,3 +26,6 @@ CSI500 = _load_symbols("csi500.json")
 
 # Top 100 Liquid ETFs
 ETF_TOP100 = _load_symbols("etf_top100.json")
+
+# Major Chinese market indexes
+INDICES = _load_symbols("indices.json")

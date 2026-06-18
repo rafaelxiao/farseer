@@ -18,10 +18,12 @@ import farseer.fetchers.sources  # noqa: F401
 class APIKeyMiddleware(BaseHTTPMiddleware):
     """Require X-API-Key on all routes except auth + docs."""
     
-    SKIP_PREFIXES = ("/api/v1/auth/", "/docs", "/openapi.json", "/redoc", "/health")
+    SKIP_PATTERNS = ("/auth/", "/docs", "/openapi.json", "/redoc", "/health")
     
     async def dispatch(self, request: Request, call_next):
-        if not any(request.url.path.startswith(p) for p in self.SKIP_PREFIXES):
+        # Use scope path (root_path stripped) for reliable matching
+        path = request.scope.get("path", request.url.path)
+        if not any(p in path for p in self.SKIP_PATTERNS):
             if not settings.api_key:
                 return await call_next(request)
             

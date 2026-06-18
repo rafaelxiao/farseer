@@ -30,7 +30,8 @@ async def list_symbols(
 
 @router.get("/")
 async def get_ohlc(
-    symbol: str,
+    symbol: str | None = None,
+    symbols: str | None = None,
     timeframe: str = "1d",
     start: str | None = None,
     end: str | None = None,
@@ -39,18 +40,24 @@ async def get_ohlc(
         default="original",
         description="Adjustment type: 'original' (actual prices), 'forward' (前复权), 'backward' (后复权)"
     ),
-    data_source: str = "tushare",
+    data_source: str = Query(
+        default="tushare",
+        description="Data source: tushare (1d), qmt (1m/5m), baostock, akshare, yfinance, binance"
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     """
     Get OHLC data with optional price adjustment.
 
+    - **symbol**: Single symbol (e.g. 600519.SH)
+    - **symbols**: Comma-separated symbols (e.g. 600519.SH,000001.SZ)
+    - **start/end**: ISO date (2026-01-01) or YYYYMMDD (20260101)
     - **original**: Actual trading prices (no adjustment)
     - **forward**: Forward adjusted (前复权) - recent prices real, historical adjusted down
     - **backward**: Backward adjusted (后复权) - historical prices real, recent adjusted up
     """
     service = OHLCService(db)
-    return await service.get_ohlc(symbol, timeframe, start, end, limit, adjust, data_source=data_source)
+    return await service.get_ohlc(symbol, symbols, timeframe, start, end, limit, adjust, data_source=data_source)
 
 
 @router.post("/", response_model=OHCLOut)

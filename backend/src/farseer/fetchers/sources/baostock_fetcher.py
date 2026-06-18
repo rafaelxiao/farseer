@@ -1,16 +1,9 @@
 """
-baostock data source fetcher.
+Baostock data source fetcher for Chinese A-shares.
 
-Stores 后复权 (backward-adjusted) prices with backward_factor.
-
-后复权:
-- Historical prices are actual (immutable)
-- Recent prices adjusted UP for splits/dividends
-- backward_factor = cumulative from IPO (monotonically increasing)
-
-Conversion:
-- 前复权 (forward) = 后复权 / backward_factor * latest_backward_factor
-- Actual price = 后复权 / backward_factor
+Adjustment:
+- Stocks: Uses query_adjust_factor() → backAdjustFactor for proper adjustment
+- ETFs: No adjustment API available → backward_factor = 1.0
 """
 
 import asyncio
@@ -20,99 +13,107 @@ from datetime import datetime
 from farseer.fetchers.base import BaseFetcher
 from farseer.fetchers.registry import FetcherRegistry
 from farseer.schemas.ohlc import OHLCBase
-from farseer.symbols.converter import SymbolConverter
 
-
-TIMEFRAME_MAP = {
-    "1d": "d",
-    "1w": "w",
-    "1M": "m",
-}
 
 _executor = ThreadPoolExecutor(max_workers=2)
 
+TIMEFRAME_MAP = {"1d": "d", "1w": "w", "1M": "m"}
+
+
+def _to_baostock_symbol(symbol: str) -> str:
+    """Farseer → Baostock: 600519.SH → sh.600519"""
+    if "." not in symbol:
+        raise ValueError(f"Invalid symbol: {symbol}")
+    code, exchange = symbol.split(".", 1)
+    return f"{'sh' if exchange == 'SH' else 'sz'}.{code}"
+
 
 class BaostockFetcher(BaseFetcher):
-    """Fetch data from baostock (free Chinese A-share data)."""
-
     name = "baostock"
     supported_exchanges = ["SH", "SZ"]
 
-    def _fetch_sync(
-        self,
-        symbol: str,
-        timeframe: str,
-        start: str | None,
-        end: str | None,
-    ) -> list[dict]:
-        """Sync fetch from baostock (runs in thread)."""
+    def _fetch_adjust_factors(self, bs_symbol: str, start: str, end: str) -> dict[str, float]:
+        """Get adjustment factors by date using query_adjust_factor."""
         import baostock as bs
+        factors = {}
+        try:
+            rs = bs.query_adjust_factor(bs_symbol, start, end)
+            while rs.next():
+                row = rs.get_row_data()
+                trade_date = row[1]  # dividOperateDate
+                back_factor = float(row[3])  # backAdjustFactor
+                factors[trade_date] = back_factor
+        except Exception:
+            pass
+        return factors
 
-        bs_symbol = SymbolConverter.to_baostock(symbol)
+    def _fetch_sync(
+        self, symbol: str, timeframe: str = "1d",
+        start: str | None = None, end: str | None = None,
+    ) -> list[dict]:
+        import baostock as bs
+        from farseer.symbols.utils import is_etf
+
+        bs_symbol = _to_baostock_symbol(symbol)
         frequency = TIMEFRAME_MAP.get(timeframe, "d")
-
-        # Fetch from start (or IPO) to get proper backward_factor
         start_date = start[:10] if start else "1990-01-01"
         end_date = end[:10] if end else datetime.now().strftime("%Y-%m-%d")
-        fields = "date,open,high,low,close,volume,amount"
 
         rs = bs.login()
         if rs.error_code != '0':
-            raise Exception(f"baostock login failed: {rs.error_msg}")
+            raise Exception(f"Baostock login failed: {rs.error_msg}")
 
         try:
-            # Fetch 后复权 (backward-adjusted, flag=2)
-            rs_backward = bs.query_history_k_data_plus(
-                bs_symbol, fields, start_date, end_date, frequency, adjustflag="2",
+            # Fetch OHLC (flag=2 = 后复权/raw prices)
+            rs_ohlc = bs.query_history_k_data_plus(
+                bs_symbol, "date,open,high,low,close,volume,amount",
+                start_date, end_date, frequency, adjustflag="2",
             )
-            backward_rows = []
-            while rs_backward.next():
-                backward_rows.append(rs_backward.get_row_data())
+            rows = []
+            while rs_ohlc.next():
+                rows.append(rs_ohlc.get_row_data())
 
-            # Fetch 前复权 (forward-adjusted, flag=3)
-            rs_forward = bs.query_history_k_data_plus(
-                bs_symbol, fields, start_date, end_date, frequency, adjustflag="3",
-            )
-            forward_rows = []
-            while rs_forward.next():
-                forward_rows.append(rs_forward.get_row_data())
-
-            if not backward_rows or not forward_rows:
+            if not rows:
                 return []
 
-            # Calculate CUMULATIVE backward_factor
-            # 
-            # Convention:
-            # - backward_factor starts at 1.0 (IPO)
-            # - Increases with each split/dividend
-            # - forward = backward / backward_factor * latest_backward_factor
-            #
-            # Formula: backward_factor = (backward / forward) normalized to start at 1.0
+            # Get adjustment factors (query from 1990 to catch all events before start_date)
+            if is_etf(symbol):
+                adjust_map = {}
+            else:
+                adjust_map = self._fetch_adjust_factors(bs_symbol, "1990-01-01", end_date)
+
+            # Build cumulative factor map: factor carries forward to all later dates
+            sorted_factors = sorted(adjust_map.items())  # [(date, factor), ...]
             
-            # First, calculate raw ratios (backward / forward)
-            raw_ratios = []
-            for bwd, fwd in zip(backward_rows, forward_rows):
-                bwd_close = float(bwd[4]) if bwd[4] else 0
-                fwd_close = float(fwd[4]) if fwd[4] else 0
-                # Use backward/forward ratio (increases over time)
-                ratio = (bwd_close / fwd_close) if fwd_close > 0 else 1.0
-                raw_ratios.append(ratio)
-            
-            # Normalize so first date = 1.0
-            first_ratio = raw_ratios[0] if raw_ratios[0] > 0 else 1.0
-            cumulative_factors = [r / first_ratio for r in raw_ratios]
-            
+            # Process records with correct factor for each date
             records = []
-            for i, (bwd, fwd) in enumerate(zip(backward_rows, forward_rows)):
+            factor_idx = 0
+            current_factor = 1.0
+            
+            for row in rows:
+                date = row[0]
+                raw_open = float(row[1]) if row[1] else 0
+                raw_high = float(row[2]) if row[2] else 0
+                raw_low = float(row[3]) if row[3] else 0
+                raw_close = float(row[4]) if row[4] else 0
+
+                # Advance factor to latest <= this date
+                while factor_idx < len(sorted_factors) and sorted_factors[factor_idx][0] <= date:
+                    current_factor = sorted_factors[factor_idx][1]
+                    factor_idx += 1
+
+                bf = current_factor
+
+                # Store 后复权 = raw × cumulative backAdjustFactor
                 records.append({
-                    "date": bwd[0],
-                    "open": float(bwd[1]) if bwd[1] else 0,  # 后复权
-                    "high": float(bwd[2]) if bwd[2] else 0,
-                    "low": float(bwd[3]) if bwd[3] else 0,
-                    "close": float(bwd[4]) if bwd[4] else 0,
-                    "volume": int(float(bwd[5])) if bwd[5] else 0,
-                    "amount": float(bwd[6]) if bwd[6] else 0,
-                    "backward_factor": round(cumulative_factors[i], 10),
+                    "date": date,
+                    "open": raw_open * bf,
+                    "high": raw_high * bf,
+                    "low": raw_low * bf,
+                    "close": raw_close * bf,
+                    "volume": int(float(row[5])) if row[5] else 0,
+                    "amount": float(row[6]) if row[6] else 0,
+                    "backward_factor": round(bf, 10),
                 })
 
             return records
@@ -121,36 +122,26 @@ class BaostockFetcher(BaseFetcher):
             bs.logout()
 
     async def _fetch_ohlc(
-        self,
-        symbol: str,
-        timeframe: str = "1d",
-        start: str | None = None,
-        end: str | None = None,
+        self, symbol: str, timeframe: str = "1d",
+        start: str | None = None, end: str | None = None,
     ) -> list[OHLCBase]:
-        """Fetch OHLC from baostock (async wrapper)."""
-
         loop = asyncio.get_event_loop()
-        raw_records = await loop.run_in_executor(
+        raw = await loop.run_in_executor(
             _executor, self._fetch_sync, symbol, timeframe, start, end,
         )
 
-        records = []
-        for row in raw_records:
-            record = OHLCBase(
+        return [
+            OHLCBase(
                 symbol=symbol,
+                data_source="baostock",
                 timeframe=timeframe,
-                timestamp=datetime.strptime(row["date"], "%Y-%m-%d"),
-                open=row["open"],
-                high=row["high"],
-                low=row["low"],
-                close=row["close"],
-                volume=row["volume"],
-                backward_factor=row["backward_factor"],
-                data={"amount": row["amount"], "source": "baostock"},
+                timestamp=datetime.strptime(r["date"], "%Y-%m-%d"),
+                open=r["open"], high=r["high"], low=r["low"], close=r["close"],
+                volume=r["volume"], backward_factor=r["backward_factor"],
+                data={"amount": r["amount"], "source": "baostock"},
             )
-            records.append(record)
-
-        return records
+            for r in raw
+        ]
 
 
 FetcherRegistry.register(BaostockFetcher())

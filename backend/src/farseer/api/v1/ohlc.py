@@ -1,11 +1,31 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text
 
 from farseer.api.deps import get_db
 from farseer.schemas.ohlc import OHLCBase, OHCLOut, OHLCQuery, OHLCBatchCreate
 from farseer.services.ohlc import OHLCService
 
 router = APIRouter()
+
+
+@router.get("/symbols")
+async def list_symbols(
+    data_source: str = "tushare",
+    db: AsyncSession = Depends(get_db),
+):
+    """List all symbols with record counts."""
+    result = await db.execute(text("""
+        SELECT symbol, COUNT(*) as records, MAX(timestamp) as latest
+        FROM ohlc
+        WHERE data_source = :src
+        GROUP BY symbol
+        ORDER BY symbol
+    """), {"src": data_source})
+    return [
+        {"symbol": row[0], "records": row[1], "latest": row[2]}
+        for row in result
+    ]
 
 
 @router.get("/")
@@ -19,6 +39,7 @@ async def get_ohlc(
         default="original",
         description="Adjustment type: 'original' (actual prices), 'forward' (前复权), 'backward' (后复权)"
     ),
+    data_source: str = "tushare",
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -29,7 +50,7 @@ async def get_ohlc(
     - **backward**: Backward adjusted (后复权) - historical prices real, recent adjusted up
     """
     service = OHLCService(db)
-    return await service.get_ohlc(symbol, timeframe, start, end, limit, adjust)
+    return await service.get_ohlc(symbol, timeframe, start, end, limit, adjust, data_source=data_source)
 
 
 @router.post("/", response_model=OHCLOut)

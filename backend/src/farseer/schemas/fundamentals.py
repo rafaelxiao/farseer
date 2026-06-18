@@ -1,13 +1,25 @@
 from datetime import date, datetime
+from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
+
+from farseer.datasource import DataSource
 
 
 class FundamentalsBase(BaseModel):
     symbol: str
+    data_source: DataSource = DataSource.tushare
     date: date
     category: str | None = None
-    data: dict = {}  # Any fields you want: {"pe_ratio": 15.2, "revenue": 1000000, ...}
+    data: Any = {}  # Flexible JSON — stored as string in DB, parsed on read
+
+    @field_validator("data", mode="before")
+    @classmethod
+    def coerce_data(cls, v: Any) -> Any:
+        if isinstance(v, str):
+            import json
+            return json.loads(v)
+        return v
 
 
 class FundamentalsOut(FundamentalsBase):

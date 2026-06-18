@@ -76,6 +76,38 @@ Then access:
 - Production: http://your-server/farseer/
 - Development: http://your-server/farseer/dev/
 
+## Data Sources
+
+| Source | Markets | OHLC | Fundamentals | Timeframes (Free) |
+|--------|---------|------|--------------|------------|
+| **Tushare** | A-shares, ETFs | ✅ Full history | ✅ Income, Balance, Indicators | 1d, 1w, 1M (intraday requires paid) |
+| **AKShare** | A-shares, ETFs | ✅ | ✅ | 5m, 15m, 30m, 1h, 1d, 1w, 1M |
+| **Baostock** | A-shares | ✅ Full history | ✅ Basic | 5m, 15m, 30m, 1h, 1d, 1w, 1M |
+| **Yahoo Finance** | Global stocks, ETFs | ✅ | ✅ Basic | 1m, 2m, 5m, 15m, 30m, 1h, 90m, 1d, 1w, 1M |
+| **Binance** | Crypto | ✅ Full history | ✅ Market data | All (1m to 1M) |
+
+### OHLC Timeframes
+
+| Timeframe | Code | Duration | Best For | Free Sources |
+|-----------|------|----------|----------|-------------|
+| 1 minute | `1m` | 1 min | Scalping, HFT | Yahoo (7d), Binance (full) |
+| 3 minutes | `3m` | 3 min | Short-term trading | Binance (full) |
+| 5 minutes | `5m` | 5 min | Day trading | AKShare, Baostock, Yahoo (60d), Binance (full) |
+| 15 minutes | `15m` | 15 min | Day trading | AKShare, Baostock, Yahoo (60d), Binance (full) |
+| 30 minutes | `30m` | 30 min | Swing trading | AKShare, Baostock, Yahoo (60d), Binance (full) |
+| 1 hour | `1h` | 1 hr | Swing trading | AKShare, Baostock, Yahoo (730d), Binance (full) |
+| 2 hours | `2h` | 2 hr | Position trading | Binance (full) |
+| 4 hours | `4h` | 4 hr | Position trading | Binance (full) |
+| 6 hours | `6h` | 6 hr | Position trading | Binance (full) |
+| 8 hours | `8h` | 8 hr | Position trading | Binance (full) |
+| 12 hours | `12h` | 12 hr | Position trading | Binance (full) |
+| Daily | `1d` | 1 day | Long-term investing | All sources (full) |
+| 3 days | `3d` | 3 days | Long-term investing | Binance (full) |
+| Weekly | `1w` | 1 week | Long-term investing | All sources (full) |
+| Monthly | `1M` | 1 month | Portfolio analysis | All sources (full) |
+
+See [docs/TIMEFRAMES.md](docs/TIMEFRAMES.md) for detailed coverage by source.
+
 ## Branch Strategy
 
 - `master` - Production-ready code

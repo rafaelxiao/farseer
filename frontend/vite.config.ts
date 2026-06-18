@@ -22,6 +22,18 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/farseer\/dev\/api/, "/api"),
       },
+      "/farseer/dev/docs": {
+        target: "http://localhost:8173",
+        changeOrigin: true,
+      },
+      "/farseer/dev/openapi.json": {
+        target: "http://localhost:8173",
+        changeOrigin: true,
+      },
+      "/farseer/dev/redoc": {
+        target: "http://localhost:8173",
+        changeOrigin: true,
+      },
     },
   },
 })

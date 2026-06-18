@@ -1,6 +1,12 @@
 import { api } from "./client"
 import type { OHLC } from "@/types"
 
+export interface SymbolInfo {
+  symbol: string
+  records: number
+  latest: string
+}
+
 export interface OHLCQueryParams {
   symbol: string
   timeframe?: string
@@ -11,6 +17,9 @@ export interface OHLCQueryParams {
 }
 
 export const ohlcApi = {
+  listSymbols: () =>
+    api.get<SymbolInfo[]>("/ohlc/symbols"),
+
   get: (params: OHLCQueryParams) => {
     const searchParams = new URLSearchParams({ symbol: params.symbol })
     if (params.timeframe) searchParams.set("timeframe", params.timeframe)

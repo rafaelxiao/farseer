@@ -1,24 +1,27 @@
 """
-yfinance data source fetcher.
+Yahoo Finance data source fetcher.
 
-Stores TRUE backward factors (后复权):
-- Historical: backward_factor = 1.0 (prices stay actual)
-- Recent: backward_factor > 1.0 (prices adjusted UP)
-- When new split: historical data UNCHANGED ✓
+Supports:
+- Global stocks (US, HK, etc.)
+- ETFs and funds
+- OHLC data with adjustment factors
 
-Formula: backward_factor = forward_factor / forward_factor_first
+Symbol format: AAPL, 0700.HK, 600519.SS
+Farseer format: AAPL.US, 0700.HK, 600519.SH
 """
 
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
-
-import yfinance as yf
 
 from farseer.fetchers.base import BaseFetcher
 from farseer.fetchers.registry import FetcherRegistry
 from farseer.schemas.ohlc import OHLCBase
-from farseer.symbols.converter import SymbolConverter
 
 
+_executor = ThreadPoolExecutor(max_workers=2)
+
+# Timeframe mapping
 TIMEFRAME_MAP = {
     "1m": "1m",
     "5m": "5m",
@@ -31,30 +34,46 @@ TIMEFRAME_MAP = {
 }
 
 
+def _to_yfinance_symbol(symbol: str) -> str:
+    """Convert Farseer symbol to Yahoo Finance format."""
+    if "." not in symbol:
+        return symbol  # US stocks like AAPL
+    
+    code, exchange = symbol.split(".", 1)
+    
+    if exchange == "SH":
+        return f"{code}.SS"
+    elif exchange == "SZ":
+        return f"{code}.SZ"
+    elif exchange == "HK":
+        return f"{code}.HK"
+    else:
+        return symbol
+
+
 class YFinanceFetcher(BaseFetcher):
-    """Fetch data from Yahoo Finance via yfinance."""
+    """Fetch data from Yahoo Finance."""
 
     name = "yfinance"
-    supported_exchanges = ["SH", "SZ", "HK", "US"]
+    supported_exchanges = ["US", "HK", "SH", "SZ"]
 
-    async def _fetch_ohlc(
+    def _fetch_sync(
         self,
         symbol: str,
         timeframe: str = "1d",
         start: str | None = None,
         end: str | None = None,
-    ) -> list[OHLCBase]:
-        """Fetch OHLC with TRUE backward factors."""
+    ) -> list[dict]:
+        """Sync fetch from Yahoo Finance."""
+        import yfinance as yf
 
-        yf_symbol = SymbolConverter.to_yfinance(symbol)
+        yf_symbol = _to_yfinance_symbol(symbol)
         interval = TIMEFRAME_MAP.get(timeframe, "1d")
-        start_date = start[:10] if start else None
-        end_date = end[:10] if end else None
 
         ticker = yf.Ticker(yf_symbol)
         hist = ticker.history(
-            start=start_date,
-            end=end_date,
+            start=start[:10] if start else None,
+            end=end[:10] if end else None,
             interval=interval,
             auto_adjust=False,
         )
@@ -62,14 +81,11 @@ class YFinanceFetcher(BaseFetcher):
         if hist.empty:
             return []
 
-        # First pass: get forward_factors
-        forward_factors = []
-        rows_data = []
+        records = []
         for idx, row in hist.iterrows():
             close = row["Close"]
             adj_close = row.get("Adj Close", close)
             forward_factor = (adj_close / close) if close != 0 else 1.0
-            forward_factors.append(forward_factor)
 
             extra = {}
             if "Stock Splits" in row and row["Stock Splits"] > 0:
@@ -77,8 +93,8 @@ class YFinanceFetcher(BaseFetcher):
             if "Dividends" in row and row["Dividends"] > 0:
                 extra["dividends"] = float(row["Dividends"])
 
-            rows_data.append({
-                "timestamp": idx.to_pydatetime() if hasattr(idx, 'to_pydatetime') else datetime.fromisoformat(str(idx)),
+            records.append({
+                "date": str(idx.date()) if hasattr(idx, 'date') else str(idx)[:10],
                 "open": float(row["Open"]),
                 "high": float(row["High"]),
                 "low": float(row["Low"]),
@@ -88,28 +104,43 @@ class YFinanceFetcher(BaseFetcher):
                 "extra": extra,
             })
 
+        return records
+
+    async def _fetch_ohlc(
+        self,
+        symbol: str,
+        timeframe: str = "1d",
+        start: str | None = None,
+        end: str | None = None,
+    ) -> list[OHLCBase]:
+        """Fetch OHLC from Yahoo Finance (async wrapper)."""
+
+        loop = asyncio.get_event_loop()
+        raw_records = await loop.run_in_executor(
+            _executor, self._fetch_sync, symbol, timeframe, start, end,
+        )
+
+        if not raw_records:
+            return []
+
         # Calculate backward factors
-        # backward_factor = forward_factor / forward_factor_first
-        # This ensures:
-        #   - First date: backward_factor = 1.0 (historical prices stay actual)
-        #   - Later dates: backward_factor >= 1.0 (prices adjusted UP)
-        first_forward = forward_factors[0] if forward_factors else 1.0
+        first_forward = raw_records[0]["forward_factor"]
 
         records = []
-        for data in rows_data:
-            backward_factor = data["forward_factor"] / first_forward if first_forward else 1.0
+        for row in raw_records:
+            backward_factor = row["forward_factor"] / first_forward if first_forward else 1.0
 
             record = OHLCBase(
                 symbol=symbol,
                 timeframe=timeframe,
-                timestamp=data["timestamp"],
-                open=data["open"],
-                high=data["high"],
-                low=data["low"],
-                close=data["close"],
-                volume=data["volume"],
+                timestamp=datetime.strptime(row["date"], "%Y-%m-%d"),
+                open=row["open"],
+                high=row["high"],
+                low=row["low"],
+                close=row["close"],
+                volume=row["volume"],
                 backward_factor=round(backward_factor, 10),
-                data=data["extra"],
+                data={**row["extra"], "source": "yfinance"},
             )
             records.append(record)
 

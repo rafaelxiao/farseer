@@ -1,20 +1,57 @@
-import { useEffect, useRef } from "react"
-import { createChart, ColorType, CrosshairMode, CandlestickSeries, HistogramSeries } from "lightweight-charts"
+import { useEffect, useRef, useState } from "react"
+import { createChart, ColorType, CrosshairMode, CandlestickSeries, HistogramSeries, LineSeries } from "lightweight-charts"
 import type { OHLC } from "@/types"
+import type { ChartColors } from "./ChartSettings"
+
+const MA_COLORS = ["#f59e0b", "#3b82f6", "#8b5cf6", "#ec4899", "#06b6d4"]
+
+function calculateMA(closes: number[], period: number): (number | null)[] {
+  const result: (number | null)[] = []
+  for (let i = 0; i < closes.length; i++) {
+    if (i < period - 1) {
+      result.push(null)
+    } else {
+      let sum = 0
+      for (let j = i - period + 1; j <= i; j++) sum += closes[j]
+      result.push(sum / period)
+    }
+  }
+  return result
+}
+
+export interface PriceLevel {
+  price: number
+  tpPercent: number  // Take profit percentage above
+  slPercent: number  // Stop loss percentage below
+}
 
 interface OHLCChartProps {
   data: OHLC[]
   height?: number
+  colors?: ChartColors
+  logScale?: boolean
+  maPeriods?: number[]
+  priceLevel?: PriceLevel | null
+  onPriceLevelChange?: (level: PriceLevel | null) => void
 }
 
-export default function OHLCChart({ data, height = 400 }: OHLCChartProps) {
+export default function OHLCChart({ data, height = 400, colors, logScale, maPeriods = [], priceLevel, onPriceLevelChange }: OHLCChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null)
+  const chartRef = useRef<any>(null)
+  const candleSeriesRef = useRef<any>(null)
+  const volumeSeriesRef = useRef<any>(null)
+  const maSeriesRefs = useRef<any[]>([])
+  const prevDataLenRef = useRef(0)
+  const isInitializedRef = useRef(false)
+  
+  // Price level lines
+  const entryLineRef = useRef<any>(null)
+  const tpLineRef = useRef<any>(null)
+  const slLineRef = useRef<any>(null)
 
+  // Create chart once
   useEffect(() => {
-    if (!chartContainerRef.current || data.length === 0) return
-
-    // Clear previous chart
-    chartContainerRef.current.innerHTML = ""
+    if (!chartContainerRef.current) return
 
     const chart = createChart(chartContainerRef.current, {
       layout: {
@@ -26,78 +63,183 @@ export default function OHLCChart({ data, height = 400 }: OHLCChartProps) {
         vertLines: { color: "#f0f0f0" },
         horzLines: { color: "#f0f0f0" },
       },
-      crosshair: {
-        mode: CrosshairMode.Normal,
-      },
+      crosshair: { mode: CrosshairMode.Normal },
       rightPriceScale: {
         borderColor: "#d1d5db",
+        mode: logScale ? 1 : 0,
       },
-      timeScale: {
-        borderColor: "#d1d5db",
-        timeVisible: true,
-      },
+      timeScale: { borderColor: "#d1d5db", timeVisible: true },
       height,
     })
 
-    // Sort data by timestamp
-    const sorted = [...data].sort(
-      (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-    )
+    chartRef.current = chart
 
-    // Candlestick series (v5 API)
-    const candlestickSeries = chart.addSeries(CandlestickSeries, {
-      upColor: "#ef4444",
-      downColor: "#22c55e",
-      borderUpColor: "#ef4444",
-      borderDownColor: "#22c55e",
-      wickUpColor: "#ef4444",
-      wickDownColor: "#22c55e",
+    const upColor = colors?.upColor || "#ef4444"
+    const downColor = colors?.downColor || "#22c55e"
+
+    const candleSeries = chart.addSeries(CandlestickSeries, {
+      upColor, downColor,
+      borderUpColor: upColor, borderDownColor: downColor,
+      wickUpColor: upColor, wickDownColor: downColor,
     })
+    candleSeriesRef.current = candleSeries
 
-    candlestickSeries.setData(
-      sorted.map((d) => ({
-        time: (new Date(d.timestamp).getTime() / 1000) as any,
-        open: d.open,
-        high: d.high,
-        low: d.low,
-        close: d.close,
-      }))
-    )
-
-    // Volume series (v5 API)
     const volumeSeries = chart.addSeries(HistogramSeries, {
       color: "#6b7280",
       priceFormat: { type: "volume" },
       priceScaleId: "volume",
     })
+    chart.priceScale("volume").applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } })
+    volumeSeriesRef.current = volumeSeries
 
-    chart.priceScale("volume").applyOptions({
-      scaleMargins: { top: 0.8, bottom: 0 },
+    maSeriesRefs.current = maPeriods.map((_, idx) => {
+      return chart.addSeries(LineSeries, {
+        color: MA_COLORS[idx % MA_COLORS.length],
+        lineWidth: 1,
+        priceLineVisible: false,
+        lastValueVisible: false,
+        crosshairMarkerVisible: false,
+      })
     })
 
-    volumeSeries.setData(
-      sorted.map((d) => ({
+    return () => {
+      chart.remove()
+      chartRef.current = null
+      candleSeriesRef.current = null
+      volumeSeriesRef.current = null
+      maSeriesRefs.current = []
+      entryLineRef.current = null
+      tpLineRef.current = null
+      slLineRef.current = null
+      prevDataLenRef.current = 0
+      isInitializedRef.current = false
+    }
+  }, [height])
+
+  // Update log scale
+  useEffect(() => {
+    if (chartRef.current) {
+      chartRef.current.applyOptions({
+        rightPriceScale: { mode: logScale ? 1 : 0 }
+      })
+    }
+  }, [logScale])
+
+  // Update price level lines
+  useEffect(() => {
+    if (!chartRef.current || !candleSeriesRef.current) return
+
+    const upColor = colors?.upColor || "#ef4444"
+    const downColor = colors?.downColor || "#22c55e"
+
+    // Remove old lines
+    if (entryLineRef.current) {
+      candleSeriesRef.current.removePriceLine(entryLineRef.current)
+      entryLineRef.current = null
+    }
+    if (tpLineRef.current) {
+      candleSeriesRef.current.removePriceLine(tpLineRef.current)
+      tpLineRef.current = null
+    }
+    if (slLineRef.current) {
+      candleSeriesRef.current.removePriceLine(slLineRef.current)
+      slLineRef.current = null
+    }
+
+    if (priceLevel) {
+      const { price, tpPercent, slPercent } = priceLevel
+      const tpPrice = price * (1 + tpPercent / 100)
+      const slPrice = price * (1 - slPercent / 100)
+
+      // Entry line
+      entryLineRef.current = candleSeriesRef.current.createPriceLine({
+        price,
+        color: "#6b7280",
+        lineWidth: 2,
+        lineStyle: 0,
+        axisLabelVisible: true,
+        title: "Entry",
+      })
+
+      // Take profit line (green)
+      tpLineRef.current = candleSeriesRef.current.createPriceLine({
+        price: tpPrice,
+        color: upColor,
+        lineWidth: 1,
+        lineStyle: 2,
+        axisLabelVisible: true,
+        title: `TP +${tpPercent}%`,
+      })
+
+      // Stop loss line (red)
+      slLineRef.current = candleSeriesRef.current.createPriceLine({
+        price: slPrice,
+        color: downColor,
+        lineWidth: 1,
+        lineStyle: 2,
+        axisLabelVisible: true,
+        title: `SL -${slPercent}%`,
+      })
+    }
+  }, [priceLevel, colors])
+
+  // Update data
+  useEffect(() => {
+    if (!chartRef.current || !candleSeriesRef.current || data.length === 0) return
+
+    const sorted = [...data].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+    const upColor = colors?.upColor || "#ef4444"
+    const downColor = colors?.downColor || "#22c55e"
+
+    candleSeriesRef.current.setData(
+      sorted.map(d => ({
         time: (new Date(d.timestamp).getTime() / 1000) as any,
-        value: d.volume,
-        color: d.close >= d.open ? "rgba(239, 68, 68, 0.3)" : "rgba(34, 197, 94, 0.3)",
+        open: d.open, high: d.high, low: d.low, close: d.close,
       }))
     )
 
-    // Fit content
-    chart.timeScale().fitContent()
+    volumeSeriesRef.current.setData(
+      sorted.map(d => ({
+        time: (new Date(d.timestamp).getTime() / 1000) as any,
+        value: d.volume,
+        color: d.close >= d.open ? `${upColor}4D` : `${downColor}4D`,
+      }))
+    )
 
-    // Cleanup
-    return () => {
-      chart.remove()
+    const closes = sorted.map(d => d.close)
+    const times = sorted.map(d => (new Date(d.timestamp).getTime() / 1000) as any)
+    maPeriods.forEach((period, idx) => {
+      if (maSeriesRefs.current[idx]) {
+        const maData = calculateMA(closes, period)
+        const lineData: any[] = []
+        for (let i = 0; i < maData.length; i++) {
+          if (maData[i] !== null) lineData.push({ time: times[i], value: maData[i] })
+        }
+        maSeriesRefs.current[idx].setData(lineData)
+      }
+    })
+
+    const timeScale = chartRef.current.timeScale()
+    
+    if (!isInitializedRef.current) {
+      timeScale.fitContent()
+      isInitializedRef.current = true
+      prevDataLenRef.current = data.length
+    } else if (data.length > prevDataLenRef.current) {
+      const visibleRange = timeScale.getVisibleLogicalRange()
+      if (visibleRange) {
+        const barsAdded = data.length - prevDataLenRef.current
+        timeScale.setVisibleLogicalRange({
+          from: visibleRange.from + barsAdded,
+          to: visibleRange.to + barsAdded,
+        })
+      }
+      prevDataLenRef.current = data.length
     }
-  }, [data, height])
+  }, [data, colors, maPeriods])
 
   if (data.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-[400px] text-muted-foreground">
-        No data to display
-      </div>
-    )
+    return <div className="flex items-center justify-center h-[400px] text-muted-foreground">No data to display</div>
   }
 
   return <div ref={chartContainerRef} />

@@ -42,13 +42,14 @@ class FundamentalsService:
         """
         stmt = pg_insert(Fundamentals).values(
             symbol=data.symbol,
+            data_source=data.data_source,
             date=data.date,
             category=data.category,
             data=json.dumps(data.data),
         )
 
         stmt = stmt.on_conflict_do_update(
-            index_elements=["symbol", "date", "category"],
+            index_elements=["symbol", "data_source", "date", "category"],
             set_={
                 "data": json.dumps(data.data),
             },
@@ -66,6 +67,7 @@ class FundamentalsService:
         values = [
             {
                 "symbol": item.symbol,
+                "data_source": item.data_source,
                 "date": item.date,
                 "category": item.category,
                 "data": json.dumps(item.data),
@@ -75,7 +77,7 @@ class FundamentalsService:
 
         stmt = pg_insert(Fundamentals).values(values)
         stmt = stmt.on_conflict_do_update(
-            index_elements=["symbol", "date", "category"],
+            index_elements=["symbol", "data_source", "date", "category"],
             set_={
                 "data": stmt.excluded.data,
             },
@@ -90,6 +92,7 @@ class FundamentalsService:
         """Insert only (will raise on duplicate)."""
         fund = Fundamentals(
             symbol=data.symbol,
+            data_source=data.data_source,
             date=data.date,
             category=data.category,
             data=json.dumps(data.data),

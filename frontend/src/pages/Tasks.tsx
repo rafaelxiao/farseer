@@ -26,6 +26,11 @@ export default function Tasks() {
     },
   })
 
+  const parseResult = (result: string | null) => {
+    if (!result) return null
+    try { return JSON.parse(result) } catch { return null }
+  }
+
   const statusVariant = (status: string) => {
     switch (status) {
       case "success": return "success"
@@ -37,7 +42,7 @@ export default function Tasks() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold">Tasks</h1>
+      <h1 className="text-lg font-semibold">Tasks</h1>
 
       <Card>
         <CardHeader className="py-3">
@@ -130,7 +135,22 @@ export default function Tasks() {
                       <TableCell className="text-xs">
                         {run.finished_at ? new Date(run.finished_at).toLocaleString() : "-"}
                       </TableCell>
-                      <TableCell className="text-xs max-w-xs truncate">{run.result ?? "-"}</TableCell>
+                      <TableCell className="text-xs">
+                        {(() => {
+                          const parsed = parseResult(run.result)
+                          if (!parsed) return <span className="text-muted-foreground">-</span>
+                          if (parsed.error) return <span className="text-red-500">{parsed.error}</span>
+                          if (parsed.status === "skipped") return <span className="text-muted-foreground">{parsed.reason || "skipped"}</span>
+                          const ohlc = parsed.ohlc
+                          const fund = parsed.fundamentals
+                          return (
+                            <span>
+                              OHLC: <span className={ohlc?.success > 0 ? "text-green-600" : "text-red-500"}>{ohlc?.success || 0}/{ohlc?.failed || 0}</span>
+                              {fund && <> | Fund: <span className={fund?.success > 0 ? "text-green-600" : "text-red-500"}>{fund?.success || 0}/{fund?.failed || 0}</span></>}
+                            </span>
+                          )
+                        })()}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

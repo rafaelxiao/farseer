@@ -1,3 +1,5 @@
+import os
+
 from pydantic_settings import BaseSettings
 
 
@@ -23,7 +25,21 @@ class Settings(BaseSettings):
     # CORS
     cors_origins: list[str] = ["http://localhost:5173", "http://localhost:3000"]
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+    # Tushare
+    tushare_token: str = ""
+    tushare_api_url: str = ""  # Custom mirror URL (empty = official)
+
+    # API Key
+    api_key: str = ""
+
+    # Scheduler
+    enable_scheduler: bool = True  # Only production runs daily fetch
+
+    model_config = {
+        "env_file": os.environ.get("ENV_FILE", ".env.dev"),
+        "env_file_encoding": "utf-8",
+        "extra": "ignore",
+    }
 
     @property
     def is_dev(self) -> bool:

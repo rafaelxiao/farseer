@@ -1,10 +1,14 @@
 from datetime import datetime
+from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
+
+from farseer.datasource import DataSource
 
 
 class OHLCBase(BaseModel):
     symbol: str
+    data_source: DataSource = DataSource.tushare
     timeframe: str
     timestamp: datetime
     open: float
@@ -13,7 +17,15 @@ class OHLCBase(BaseModel):
     close: float
     volume: int = 0
     backward_factor: float = 1.0  # Backward adjustment (后复权): price * factor
-    data: dict = {}  # Extra: {"vwap": 150.5, "turnover": 1234567, ...}
+    data: Any = {}  # Flexible extra data (JSONB in DB, may come as string from ORM)
+
+    @field_validator("data", mode="before")
+    @classmethod
+    def coerce_data(cls, v: Any) -> Any:
+        if isinstance(v, str):
+            import json
+            return json.loads(v)
+        return v
 
 
 class OHCLOut(OHLCBase):
@@ -26,6 +38,7 @@ class OHCLOut(OHLCBase):
 
 class OHLCQuery(BaseModel):
     symbol: str
+    data_source: DataSource = DataSource.tushare
     timeframe: str = "1d"
     start: datetime | None = None
     end: datetime | None = None

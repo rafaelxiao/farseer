@@ -1,19 +1,44 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import JSONResponse
 
 from farseer.api.v1.router import router as v1_router
 from farseer.config import settings
 from farseer.scheduler.runner import start_scheduler, shutdown_scheduler
+from farseer.database import async_session_factory
+from farseer.services.auth import init_admin
 
 # Import to register fetchers
 import farseer.fetchers.sources  # noqa: F401
 
 
+class APIKeyMiddleware(BaseHTTPMiddleware):
+    """Require X-API-Key on all routes except auth + docs."""
+    
+    SKIP_PREFIXES = ("/api/v1/auth/", "/docs", "/openapi.json", "/redoc", "/health")
+    
+    async def dispatch(self, request: Request, call_next):
+        if not any(request.url.path.startswith(p) for p in self.SKIP_PREFIXES):
+            if not settings.api_key:
+                return await call_next(request)
+            
+            api_key = request.headers.get("X-API-Key")
+            if api_key != settings.api_key:
+                return JSONResponse(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    content={"detail": "Invalid or missing X-API-Key header"}
+                )
+        return await call_next(request)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
+    async with async_session_factory() as db:
+        await init_admin(db)
     start_scheduler()
     yield
     # Shutdown
@@ -40,6 +65,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# API Key auth (must be after CORS)
+app.add_middleware(APIKeyMiddleware)
 
 # Routes
 app.include_router(v1_router, prefix=settings.api_v1_prefix)

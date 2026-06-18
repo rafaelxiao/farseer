@@ -24,8 +24,3 @@ class FetcherRegistry:
     def list_all(cls) -> list[str]:
         """List all registered fetcher names."""
         return list(cls._fetchers.keys())
-
-    @classmethod
-    def get_for_symbol(cls, symbol: str) -> list[BaseFetcher]:
-        """Get all fetchers that support this symbol."""
-        return [f for f in cls._fetchers.values() if f.validate_symbol(symbol)]

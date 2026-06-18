@@ -5,6 +5,7 @@ async def test_create_and_get_ohlc(client):
     # Create
     payload = {
         "symbol": "AAPL",
+        "data_source": "test",
         "timeframe": "1d",
         "timestamp": "2024-01-15T00:00:00Z",
         "open": 185.0,
@@ -20,7 +21,7 @@ async def test_create_and_get_ohlc(client):
     assert data["close"] == 187.0
 
     # Get
-    resp = await client.get("/api/v1/ohlc/", params={"symbol": "AAPL", "timeframe": "1d"})
+    resp = await client.get("/api/v1/ohlc/", params={"symbol": "AAPL", "timeframe": "1d", "data_source": "test"})
     assert resp.status_code == 200
     items = resp.json()
     assert len(items) == 1
@@ -32,6 +33,7 @@ async def test_batch_create_ohlc(client):
         "items": [
             {
                 "symbol": "AAPL",
+                "data_source": "test_batch",
                 "timeframe": "1d",
                 "timestamp": f"2024-01-{day:02d}T00:00:00Z",
                 "open": 185.0,

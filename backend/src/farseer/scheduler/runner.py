@@ -51,5 +51,6 @@ def start_scheduler():
 
 def shutdown_scheduler():
     """Shutdown the scheduler."""
-    scheduler.shutdown(wait=False)
-    logger.info("Scheduler stopped")
+    if scheduler.running:
+        scheduler.shutdown(wait=False)
+        logger.info("Scheduler stopped")

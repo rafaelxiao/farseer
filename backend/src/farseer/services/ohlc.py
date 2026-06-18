@@ -14,6 +14,22 @@ from farseer.models.ohlc import OHLC
 from farseer.schemas.ohlc import OHLCBase
 
 
+from zoneinfo import ZoneInfo
+
+
+def _market_tz(symbol: str) -> ZoneInfo:
+    """Return the market timezone for a symbol."""
+    if ".SH" in symbol or ".SZ" in symbol:
+        return ZoneInfo("Asia/Shanghai")
+    # Future: ".US" -> America/New_York, else UTC
+    return ZoneInfo("UTC")
+
+
+def _format_date(ts, symbol: str) -> str:
+    """Format timestamp as date string in market's local timezone."""
+    return ts.astimezone(_market_tz(symbol)).strftime("%Y-%m-%d")
+
+
 def safe_float(val, default=0.0):
     """Convert to float, replacing NaN/Inf with default."""
     try:
@@ -60,8 +76,9 @@ class OHLCService:
         latest_backward_factor = float(latest_result.scalar() or 1.0)
 
         # Get requested data
-        # If end is specified but no start, get last N bars before end date
+        # Default: latest N bars
         if end and not start:
+            # Get last N bars before end date
             query = (
                 select(OHLC)
                 .where(OHLC.symbol == symbol, OHLC.data_source == data_source, OHLC.timeframe == timeframe)
@@ -71,33 +88,47 @@ class OHLCService:
             )
             result = await self.db.execute(query)
             rows = list(reversed(list(result.scalars().all())))
-        else:
+        elif start or end:
+            # Date range specified: fetch ASC
             query = (
                 select(OHLC)
                 .where(OHLC.symbol == symbol, OHLC.data_source == data_source, OHLC.timeframe == timeframe)
                 .order_by(OHLC.timestamp.asc())
                 .limit(limit)
             )
-
             if start:
                 query = query.where(OHLC.timestamp >= datetime.fromisoformat(start))
             if end:
                 query = query.where(OHLC.timestamp <= datetime.fromisoformat(end))
-
             result = await self.db.execute(query)
             rows = list(result.scalars().all())
+        else:
+            # No date range: get latest N bars
+            query = (
+                select(OHLC)
+                .where(OHLC.symbol == symbol, OHLC.data_source == data_source, OHLC.timeframe == timeframe)
+                .order_by(OHLC.timestamp.desc())
+                .limit(limit)
+            )
+            result = await self.db.execute(query)
+            rows = list(reversed(list(result.scalars().all())))
 
         if not rows:
             return []
 
         records = []
         for row in rows:
+            # For daily data, use date-only string in market's local timezone
+            ts_val = row.timestamp
+            if row.timeframe == "1d":
+                ts_val = _format_date(row.timestamp, row.symbol)
+
             record = {
                 "id": row.id,
                 "symbol": row.symbol,
                 "data_source": row.data_source,
                 "timeframe": row.timeframe,
-                "timestamp": row.timestamp,
+                "timestamp": ts_val,
                 "volume": row.volume,
                 "backward_factor": float(row.backward_factor),
                 "created_at": row.created_at,

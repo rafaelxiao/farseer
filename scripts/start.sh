@@ -43,8 +43,11 @@ start_instance() {
     
     # Start frontend
     cd "$PROJECT_ROOT/frontend"
-    nohup bun run vite --host 0.0.0.0 --port "$FRONTEND_PORT" \
+    local vite_mode="development"
+    [[ "$mode" == "prod" ]] && vite_mode="prod"
+    nohup bun run vite --host 0.0.0.0 --port "$FRONTEND_PORT" --mode "$vite_mode" \
         > "$PROJECT_ROOT/logs/frontend_${mode}.log" 2>&1 &
+    disown
     echo "  Frontend PID: $!"
     
     sleep 2

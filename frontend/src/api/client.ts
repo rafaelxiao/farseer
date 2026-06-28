@@ -7,22 +7,12 @@ const getApiBase = () => {
 
 const API_BASE = getApiBase()
 
-function getAuthHeaders(): Record<string, string> {
-  const token = localStorage.getItem("farseer-token")
-  if (token) {
-    return { Authorization: `Bearer ${token}` }
-  }
-  return {}
-}
-
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const url = `${API_BASE}${path}`
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    ...getAuthHeaders(),
   }
   
-  // API key for backend protection
   const apiKey = import.meta.env.VITE_API_KEY
   if (apiKey) {
     headers["X-API-Key"] = apiKey

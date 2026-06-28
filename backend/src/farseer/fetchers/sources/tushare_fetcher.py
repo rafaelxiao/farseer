@@ -48,7 +48,7 @@ class TushareFetcher(BaseFetcher):
             return []
 
         # Fetch adjustment factors
-        time.sleep(0.3)
+        time.sleep(0.1)
         df_adj = pro.adj_factor(ts_code=ts_code, start_date=start_date, end_date=end_date)
 
         if df_adj is None or len(df_adj) == 0:
@@ -168,8 +168,7 @@ class TushareFetcher(BaseFetcher):
             raise ValueError(f"Tushare only supports 1d timeframe, got: {timeframe}")
 
         try:
-            # Rate limit: wait between requests
-            time.sleep(0.6)  # ~170 requests/min, under 200/min limit
+            time.sleep(0.1)
             
             if symbol in INDICES:
                 return self._fetch_index(ts_code, start_date, end_date)

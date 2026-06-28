@@ -185,10 +185,13 @@ class OHLCService:
 
         records = []
         for row in rows:
-            # For daily data, use date-only string in market's local timezone
+            # Format timestamp in market's local timezone
             ts_val = row.timestamp
             if row.timeframe == "1d":
                 ts_val = _format_date(row.timestamp, row.symbol)
+            else:
+                # For intraday, return ISO with market timezone
+                ts_val = row.timestamp.astimezone(_market_tz(row.symbol)).isoformat()
 
             record = {
                 "id": row.id,
@@ -273,6 +276,15 @@ class OHLCService:
         if not items:
             return []
 
+        # Deduplicate by unique key to avoid "ON CONFLICT DO UPDATE command cannot affect row a second time"
+        seen = set()
+        unique_items = []
+        for item in items:
+            key = (item.symbol, item.data_source, item.timeframe, item.timestamp)
+            if key not in seen:
+                seen.add(key)
+                unique_items.append(item)
+
         values = [
             {
                 "symbol": item.symbol,
@@ -287,7 +299,7 @@ class OHLCService:
                 "backward_factor": item.backward_factor,
                 "data": json.dumps(item.data) if item.data else "{}",
             }
-            for item in items
+            for item in unique_items
         ]
 
         stmt = pg_insert(OHLC).values(values)
@@ -304,6 +316,26 @@ class OHLCService:
             },
         ).returning(OHLC)
 
-        result = await self.db.execute(stmt)
+        # Chunk to avoid PostgreSQL parameter limit (~65K params)
+        result_rows = []
+        chunk_size = 1000
+        for i in range(0, len(unique_items), chunk_size):
+            chunk_values = values[i:i+chunk_size]
+            stmt = pg_insert(OHLC).values(chunk_values)
+            stmt = stmt.on_conflict_do_update(
+                index_elements=["symbol", "data_source", "timeframe", "timestamp"],
+                set_={
+                    "open": stmt.excluded.open,
+                    "high": stmt.excluded.high,
+                    "low": stmt.excluded.low,
+                    "close": stmt.excluded.close,
+                    "volume": stmt.excluded.volume,
+                    "backward_factor": stmt.excluded.backward_factor,
+                    "data": stmt.excluded.data,
+                },
+            ).returning(OHLC)
+            result = await self.db.execute(stmt)
+            result_rows.extend(result.scalars().all())
+        
         await self.db.commit()
-        return list(result.scalars().all())
+        return result_rows

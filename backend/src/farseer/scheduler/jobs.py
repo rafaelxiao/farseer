@@ -111,7 +111,7 @@ def fetch_ohlc(pro, conn, cur, symbols: list[str]) -> tuple[int, int]:
     
     for symbol in symbols:
         try:
-            time.sleep(0.4)
+            time.sleep(0.1)
             
             if is_etf(symbol):
                 # ETF: fetch actual prices from fund_daily
@@ -143,7 +143,7 @@ def fetch_ohlc(pro, conn, cur, symbols: list[str]) -> tuple[int, int]:
                 # Stock: fetch actual prices, store as 后复权
                 df = pro.daily(ts_code=symbol, start_date=start_date, end_date=end_date)
                 if df is not None and len(df) > 0:
-                    time.sleep(0.3)
+                    time.sleep(0.1)
                     df_adj = pro.adj_factor(ts_code=symbol, start_date=start_date, end_date=end_date)
                     
                     cur.execute("SELECT backward_factor FROM ohlc WHERE symbol=%s AND data_source='tushare' ORDER BY timestamp ASC LIMIT 1", (symbol,))
@@ -197,7 +197,7 @@ def fetch_index_ohlc(pro, conn, cur, symbols: list[str]) -> tuple[int, int]:
     
     for symbol in symbols:
         try:
-            time.sleep(0.4)
+            time.sleep(0.1)
             df = pro.index_daily(ts_code=symbol, start_date=start_date, end_date=end_date)
             
             if df is not None and len(df) > 0:
@@ -236,7 +236,7 @@ def fetch_stock_fundamentals(pro, conn, cur, symbols: list[str]) -> tuple[int, i
     
     for symbol in symbols:
         try:
-            time.sleep(0.5)
+            time.sleep(0.2)
             
             # Income
             df_income = pro.income(ts_code=symbol, fields="ts_code,end_date,revenue,n_income_attr_p,basic_eps,diluted_eps")
@@ -260,7 +260,7 @@ def fetch_stock_fundamentals(pro, conn, cur, symbols: list[str]) -> tuple[int, i
                             """, (symbol, date, 'income', json.dumps(data), json.dumps(data)))
             
             # Financial indicators
-            time.sleep(0.5)
+            time.sleep(0.2)
             df_fina = pro.fina_indicator(ts_code=symbol, fields="ts_code,end_date,eps,roe,roa,roa_yearly,netprofit_margin,debt_to_assets,op_yoy,netprofit_yoy,bps")
             if df_fina is not None and len(df_fina) > 0:
                 for _, row in df_fina.head(4).iterrows():
@@ -308,7 +308,7 @@ def fetch_etf_fundamentals(pro, conn, cur, symbols: list[str]) -> tuple[int, int
     
     for symbol in symbols:
         try:
-            time.sleep(0.5)
+            time.sleep(0.2)
             
             # ETF NAV
             df_nav = pro.fund_nav(ts_code=symbol, fields="ts_code,nav_date,unit_nav,accum_nav")

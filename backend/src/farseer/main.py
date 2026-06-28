@@ -9,7 +9,6 @@ from farseer.api.v1.router import router as v1_router
 from farseer.config import settings
 from farseer.scheduler.runner import start_scheduler, shutdown_scheduler
 from farseer.database import async_session_factory
-from farseer.services.auth import init_admin
 
 # Import to register fetchers
 import farseer.fetchers.sources  # noqa: F401
@@ -40,7 +39,7 @@ class APIKeyMiddleware(BaseHTTPMiddleware):
 async def lifespan(app: FastAPI):
     # Startup
     async with async_session_factory() as db:
-        await init_admin(db)
+        pass  # no init needed
     start_scheduler()
     yield
     # Shutdown

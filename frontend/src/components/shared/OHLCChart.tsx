@@ -19,23 +19,15 @@ function calculateMA(closes: number[], period: number): (number | null)[] {
   return result
 }
 
-export interface PriceLevel {
-  price: number
-  tpPercent: number  // Take profit percentage above
-  slPercent: number  // Stop loss percentage below
-}
-
 interface OHLCChartProps {
   data: OHLC[]
   height?: number
   colors?: ChartColors
   logScale?: boolean
   maPeriods?: number[]
-  priceLevel?: PriceLevel | null
-  onPriceLevelChange?: (level: PriceLevel | null) => void
 }
 
-export default function OHLCChart({ data, height = 400, colors, logScale, maPeriods = [], priceLevel, onPriceLevelChange }: OHLCChartProps) {
+export default function OHLCChart({ data, height = 400, colors, logScale, maPeriods = [] }: OHLCChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<any>(null)
   const candleSeriesRef = useRef<any>(null)
@@ -45,10 +37,6 @@ export default function OHLCChart({ data, height = 400, colors, logScale, maPeri
   const isInitializedRef = useRef(false)
   
   // Price level lines
-  const entryLineRef = useRef<any>(null)
-  const tpLineRef = useRef<any>(null)
-  const slLineRef = useRef<any>(null)
-
   // Create chart once
   useEffect(() => {
     if (!chartContainerRef.current) return
@@ -108,9 +96,6 @@ export default function OHLCChart({ data, height = 400, colors, logScale, maPeri
       candleSeriesRef.current = null
       volumeSeriesRef.current = null
       maSeriesRefs.current = []
-      entryLineRef.current = null
-      tpLineRef.current = null
-      slLineRef.current = null
       prevDataLenRef.current = 0
       isInitializedRef.current = false
     }
@@ -124,64 +109,6 @@ export default function OHLCChart({ data, height = 400, colors, logScale, maPeri
       })
     }
   }, [logScale])
-
-  // Update price level lines
-  useEffect(() => {
-    if (!chartRef.current || !candleSeriesRef.current) return
-
-    const upColor = colors?.upColor || "#ef4444"
-    const downColor = colors?.downColor || "#22c55e"
-
-    // Remove old lines
-    if (entryLineRef.current) {
-      candleSeriesRef.current.removePriceLine(entryLineRef.current)
-      entryLineRef.current = null
-    }
-    if (tpLineRef.current) {
-      candleSeriesRef.current.removePriceLine(tpLineRef.current)
-      tpLineRef.current = null
-    }
-    if (slLineRef.current) {
-      candleSeriesRef.current.removePriceLine(slLineRef.current)
-      slLineRef.current = null
-    }
-
-    if (priceLevel) {
-      const { price, tpPercent, slPercent } = priceLevel
-      const tpPrice = price * (1 + tpPercent / 100)
-      const slPrice = price * (1 - slPercent / 100)
-
-      // Entry line
-      entryLineRef.current = candleSeriesRef.current.createPriceLine({
-        price,
-        color: "#6b7280",
-        lineWidth: 2,
-        lineStyle: 0,
-        axisLabelVisible: true,
-        title: "Entry",
-      })
-
-      // Take profit line (green)
-      tpLineRef.current = candleSeriesRef.current.createPriceLine({
-        price: tpPrice,
-        color: upColor,
-        lineWidth: 1,
-        lineStyle: 2,
-        axisLabelVisible: true,
-        title: `TP +${tpPercent}%`,
-      })
-
-      // Stop loss line (red)
-      slLineRef.current = candleSeriesRef.current.createPriceLine({
-        price: slPrice,
-        color: downColor,
-        lineWidth: 1,
-        lineStyle: 2,
-        axisLabelVisible: true,
-        title: `SL -${slPercent}%`,
-      })
-    }
-  }, [priceLevel, colors])
 
   // Update data
   useEffect(() => {

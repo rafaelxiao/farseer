@@ -17,10 +17,10 @@ build/
 node_modules/
 frontend/dist/
 
-# Environment (keep examples, ignore actual .env)
+# Environment (ignore all, keep example)
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
 
 # IDE
 .vscode/
@@ -38,13 +38,14 @@ Thumbs.db
 *.sqlite
 
 # Logs
-*.log
 logs/
+*.log
 
-# Docker volumes
+# Docker
 pgdata/
 
-# Alembic
+# Alembic (removed)
 alembic.ini.bak
-# Environment (all env files)
-.env.*
+
+# Nginx backup
+*.bak

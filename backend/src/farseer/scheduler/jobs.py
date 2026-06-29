@@ -6,10 +6,11 @@ import json
 import logging
 import math
 import time
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
+from chinese_calendar import is_workday
 
 from farseer.universe.sets import CSI300, CSI500, ETF_TOP100, INDICES
 from farseer.fetchers.sources.akshare_macro import fetch_all_macro
@@ -17,39 +18,14 @@ from farseer.fetchers.sources.akshare_macro import fetch_all_macro
 logger = logging.getLogger(__name__)
 
 
-# Chinese market holidays (2026) - update annually
-MARKET_HOLIDAYS_2026 = [
-    # New Year
-    "2026-01-01", "2026-01-02",
-    # Spring Festival
-    "2026-02-17", "2026-02-18", "2026-02-19", "2026-02-20", "2026-02-21", "2026-02-22", "2026-02-23",
-    # Qingming
-    "2026-04-04", "2026-04-05", "2026-04-06",
-    # Labor Day
-    "2026-05-01", "2026-05-02", "2026-05-03", "2026-05-04", "2026-05-05",
-    # Dragon Boat
-    "2026-06-19", "2026-06-20", "2026-06-21",
-    # Mid-Autumn & National Day
-    "2026-10-01", "2026-10-02", "2026-10-03", "2026-10-04", "2026-10-05", "2026-10-06", "2026-10-07",
-]
-
-
 def is_market_closed() -> bool:
-    """Check if market is closed (weekend or holiday)."""
-    today = datetime.now()
-    
-    # Check weekend
-    if today.weekday() >= 5:  # Saturday=5, Sunday=6
-        logger.info(f"Market closed: weekend ({today.strftime('%A')})")
-        return True
-    
-    # Check holiday
-    today_str = today.strftime("%Y-%m-%d")
-    if today_str in MARKET_HOLIDAYS_2026:
-        logger.info(f"Market closed: holiday ({today_str})")
-        return True
-    
-    return False
+    """Check if market is closed (weekend or Chinese holiday).
+    Uses chinese-calendar which auto-updates each year."""
+    today = date.today()
+    if is_workday(today):
+        return False
+    logger.info(f"Market closed: {today} (weekend or holiday)")
+    return True
 
 
 def get_all_symbols() -> list[str]:

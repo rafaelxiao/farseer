@@ -16,7 +16,8 @@ const INDICATOR_META: Record<string, { label: string; color: string; desc: strin
   "LPR5Y.CN": { label: "LPR 5Y", color: "#ec4899", desc: "Loan Prime Rate 5Y", unit: "%" },
   "FX_USDCNY": { label: "USD/CNY", color: "#6366f1", desc: "Exchange Rate (÷100)", unit: "" },
   "FX_RESERVES.CN": { label: "FX Reserves", color: "#14b8a6", desc: "Foreign Exchange Reserves ($100M)", unit: "" },
-  "CPI.US": { label: "CPI (US)", color: "#dc2626", desc: "US CPI", unit: "" },
+  "CPI.US": { label: "CPI (US) YoY", color: "#dc2626", desc: "US CPI YoY% — through 2026-05", unit: "%" },
+  "CPI_LEVEL.US": { label: "CPI Level (US)", color: "#ef4444", desc: "US CPI absolute level (1970-)", unit: "" },
   "FEDFUNDS.US": { label: "Fed Funds Rate", color: "#1e40af", desc: "US Federal Funds Rate", unit: "%" },
   "UNEMPLOYMENT.US": { label: "Unemployment (US)", color: "#7c3aed", desc: "US Unemployment Rate", unit: "%" },
   "NONFARM.US": { label: "Non-Farm (US)", color: "#059669", desc: "US Non-Farm Payrolls", unit: "K" },
@@ -37,7 +38,7 @@ const INDICATOR_GROUPS: { label: string; symbols: string[] }[] = [
   { label: "🏭 China Activity", symbols: ["PMI.CN", "GDP.CN", "INDUSTRIAL_PROD.CN", "TRADE_BALANCE.CN"] },
   { label: "💵 China Monetary", symbols: ["M2.CN", "LPR1Y.CN", "LPR5Y.CN", "RRR.CN", "SOCIAL_FIN.CN"] },
   { label: "🌐 China FX & Jobs", symbols: ["FX_USDCNY", "FX_RESERVES.CN", "UNEMPLOY.CN"] },
-  { label: "🇺🇸 US Macro", symbols: ["CPI.US", "CORE_CPI.US", "PPI.US", "FEDFUNDS.US", "UNEMPLOYMENT.US", "NONFARM.US", "RETAIL.US", "ISM_PMI.US"] },
+  { label: "🇺🇸 US Macro", symbols: ["CPI.US", "CPI_LEVEL.US", "CORE_CPI.US", "PPI.US", "FEDFUNDS.US", "UNEMPLOYMENT.US", "NONFARM.US", "RETAIL.US", "ISM_PMI.US"] },
 ]
 
 function formatValue(value: number): string {

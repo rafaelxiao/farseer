@@ -230,14 +230,38 @@ def fetch_foreign_reserves() -> list[MacroBase]:
 # ── US Macro Indicators ──
 
 def fetch_us_cpi() -> list[MacroBase]:
-    """US CPI monthly. value=YoY%"""
+    """US CPI YoY% — uses _yoy variant for fresher data (through 2026-06)."""
     try:
-        df = ak.macro_usa_cpi_monthly()
-        records = _standard_extract(df, "CPI.US")
-        logger.info(f"US CPI: {len(records)} records")
+        df = ak.macro_usa_cpi_yoy()
+        if df is None or len(df) == 0:
+            return []
+        # Columns: 时间, 发布日期, 现值, 前值
+        records = []
+        for _, row in df.iterrows():
+            d = _parse_date(row.get("时间"))
+            v = _safe_float(row.get("现值"))
+            prev = _safe_float(row.get("前值"))
+            if d is not None and v is not None:
+                records.append(MacroBase(
+                    symbol="CPI.US", data_source=DataSource.akshare, date=d, value=v,
+                    data={"previous": prev} if prev is not None else None,
+                ))
+        logger.info(f"US CPI YoY: {len(records)} records")
         return records
     except Exception as e:
-        logger.error(f"US CPI failed: {e}")
+        logger.error(f"US CPI YoY failed: {e}")
+        return []
+
+
+def fetch_us_cpi_level() -> list[MacroBase]:
+    """US CPI absolute level (monthly) — historical back to 1970."""
+    try:
+        df = ak.macro_usa_cpi_monthly()
+        records = _standard_extract(df, "CPI_LEVEL.US")
+        logger.info(f"US CPI Level: {len(records)} records")
+        return records
+    except Exception as e:
+        logger.error(f"US CPI Level failed: {e}")
         return []
 
 
@@ -438,6 +462,7 @@ FETCHERS = [
     fetch_urban_unemployment,
     # US
     fetch_us_cpi,
+    fetch_us_cpi_level,
     fetch_us_core_cpi,
     fetch_us_rate,
     fetch_us_unemployment,

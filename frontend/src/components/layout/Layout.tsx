@@ -8,6 +8,7 @@ export default function Layout() {
     { path: "/", label: "Dashboard" },
     { path: "/ohlc", label: "OHLC" },
     { path: "/fundamentals", label: "Fundamentals" },
+    { path: "/macro", label: "Macro" },
     { path: "/tasks", label: "Tasks" },
     { path: "/docs", label: "API Docs", external: true },
   ]

@@ -12,6 +12,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from farseer.universe.sets import CSI300, CSI500, ETF_TOP100, INDICES
+from farseer.fetchers.sources.akshare_macro import fetch_all_macro
 
 logger = logging.getLogger(__name__)
 
@@ -351,6 +352,39 @@ def _validate_token(pro) -> bool:
         return False
 
 
+def fetch_macro_to_db(conn, cur) -> tuple[int, int]:
+    """Fetch macro data and store in DB. Returns (inserted, errors)."""
+    logger.info("=== Fetching Macro Economic Data ===")
+    try:
+        records = fetch_all_macro()
+        if not records:
+            logger.warning("Macro: no records fetched")
+            return 0, 0
+
+        inserted = 0
+        errors = 0
+        for r in records:
+            try:
+                cur.execute("""
+                    INSERT INTO macro (symbol, data_source, date, value, data)
+                    VALUES (%s, %s, %s, %s, %s)
+                    ON CONFLICT (symbol, data_source, date) DO UPDATE SET
+                        value = EXCLUDED.value, data = EXCLUDED.data
+                """, (r.symbol, r.data_source.value, r.date, r.value,
+                      json.dumps(r.data or {})))
+                inserted += 1
+            except Exception as e:
+                logger.error(f"Macro insert failed {r.symbol}/{r.date}: {e}")
+                errors += 1
+
+        conn.commit()
+        logger.info(f"Macro complete: {inserted} inserted, {errors} errors")
+        return inserted, errors
+    except Exception as e:
+        logger.exception(f"Macro fetch failed: {e}")
+        return 0, 1
+
+
 def daily_fetch_job():
     """Daily fetch: update all universe symbols with latest data."""
     import tushare as ts
@@ -410,6 +444,9 @@ def daily_fetch_job():
         
         # Fetch ETF Fundamentals
         etf_success, etf_failed = fetch_etf_fundamentals(pro, conn, cur, etf_symbols)
+
+        # Fetch Macro Economic Data
+        macro_inserted, macro_errors = fetch_macro_to_db(conn, cur)
         
         # Log success
         result = {
@@ -417,6 +454,7 @@ def daily_fetch_job():
             "index": {"success": idx_success, "failed": idx_failed},
             "fundamentals": {"success": fund_success, "failed": fund_failed},
             "etf": {"success": etf_success, "failed": etf_failed},
+            "macro": {"inserted": macro_inserted, "errors": macro_errors},
         }
         _log_task_result(conn, cur, task_id, "success", result)
         

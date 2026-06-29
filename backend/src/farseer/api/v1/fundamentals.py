@@ -6,7 +6,7 @@ from sqlalchemy import text
 
 from farseer.api.deps import get_db
 from farseer.schemas.fundamentals import FundamentalsBase, FundamentalsOut, FundamentalsQuery
-from farseer.services.fundamentals import FundamentalsService
+from farseer.data.fundamentals import FundamentalsService
 
 router = APIRouter()
 

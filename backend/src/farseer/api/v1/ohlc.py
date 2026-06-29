@@ -4,7 +4,7 @@ from sqlalchemy import text
 
 from farseer.api.deps import get_db
 from farseer.schemas.ohlc import OHLCBase, OHCLOut, OHLCQuery, OHLCBatchCreate
-from farseer.services.ohlc import OHLCService
+from farseer.data.ohlc import OHLCService
 
 router = APIRouter()
 

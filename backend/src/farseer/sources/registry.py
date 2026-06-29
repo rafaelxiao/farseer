@@ -2,7 +2,7 @@
 Fetcher registry - manages all available data sources.
 """
 
-from farseer.fetchers.base import BaseFetcher
+from farseer.sources.base import BaseFetcher
 
 
 class FetcherRegistry:

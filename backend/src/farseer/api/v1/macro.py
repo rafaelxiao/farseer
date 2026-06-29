@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from farseer.api.deps import get_db
 from farseer.schemas.macro import MacroBase, MacroOut
-from farseer.services.macro import MacroService
+from farseer.data.macro import MacroService
 
 router = APIRouter()
 

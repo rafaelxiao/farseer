@@ -10,8 +10,8 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 
-from farseer.fetchers.base import BaseFetcher
-from farseer.fetchers.registry import FetcherRegistry
+from farseer.sources.base import BaseFetcher
+from farseer.sources.registry import FetcherRegistry
 from farseer.schemas.ohlc import OHLCBase
 
 
@@ -52,7 +52,7 @@ class BaostockFetcher(BaseFetcher):
         start: str | None = None, end: str | None = None,
     ) -> list[dict]:
         import baostock as bs
-        from farseer.symbols.utils import is_etf
+        from farseer.universe import is_etf
 
         bs_symbol = _to_baostock_symbol(symbol)
         frequency = TIMEFRAME_MAP.get(timeframe, "d")

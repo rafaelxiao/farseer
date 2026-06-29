@@ -95,12 +95,12 @@ class BaseFetcher(ABC):
 
     async def _save_ohlc(self, db: AsyncSession, record: OHLCBase) -> None:
         """Save a single OHLC record. Override for custom logic."""
-        from farseer.services.ohlc import OHLCService
+        from farseer.data.ohlc import OHLCService
         service = OHLCService(db)
         await service.upsert_ohlc(record)
 
     def validate_symbol(self, symbol: str) -> bool:
         """Check if symbol is supported by this source."""
-        from farseer.symbols.formats import SymbolFormat
+        from farseer.universe import SymbolFormat
         code, exchange = SymbolFormat.parse(symbol)
         return exchange.value in self.supported_exchanges

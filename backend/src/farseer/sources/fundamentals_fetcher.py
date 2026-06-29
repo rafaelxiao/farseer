@@ -25,7 +25,7 @@ from datetime import datetime, date
 from farseer.database import async_session_factory
 from farseer.models.fundamentals import Fundamentals
 from farseer.config import settings
-from farseer.symbols.utils import is_etf
+from farseer.universe import is_etf
 
 logger = logging.getLogger(__name__)
 

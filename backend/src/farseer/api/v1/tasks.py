@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from farseer.api.deps import get_db
 from farseer.models.task import TaskRun
 from farseer.schemas.task import TaskRunOut, TaskRunSummary
-from farseer.scheduler.runner import scheduler
+from farseer.jobs.runner import scheduler
 
 router = APIRouter()
 

@@ -7,11 +7,11 @@ from starlette.responses import JSONResponse
 
 from farseer.api.v1.router import router as v1_router
 from farseer.config import settings
-from farseer.scheduler.runner import start_scheduler, shutdown_scheduler
+from farseer.jobs.runner import start_scheduler, shutdown_scheduler
 from farseer.database import async_session_factory
 
 # Import to register fetchers
-import farseer.fetchers.sources  # noqa: F401
+import farseer.sources  # noqa: F401
 
 
 class APIKeyMiddleware(BaseHTTPMiddleware):

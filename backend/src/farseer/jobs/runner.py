@@ -38,7 +38,7 @@ async def run_fetcher_job(job_id: str, fetcher):
 def start_scheduler():
     """Start the scheduler and register jobs (only in prod)."""
     from farseer.config import settings
-    from farseer.scheduler.jobs import register_jobs
+    from farseer.jobs.daily import register_jobs
 
     if not settings.enable_scheduler:
         logger.info("Scheduler disabled in dev mode")

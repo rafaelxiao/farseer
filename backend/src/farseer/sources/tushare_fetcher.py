@@ -18,12 +18,12 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 
-from farseer.fetchers.base import BaseFetcher
-from farseer.fetchers.registry import FetcherRegistry
+from farseer.sources.base import BaseFetcher
+from farseer.sources.registry import FetcherRegistry
 from farseer.schemas.ohlc import OHLCBase
 from farseer.config import settings
-from farseer.symbols.utils import is_etf
-from farseer.universe.sets import INDICES
+from farseer.universe import is_etf
+from farseer.universe import INDICES
 
 
 _executor = ThreadPoolExecutor(max_workers=2)

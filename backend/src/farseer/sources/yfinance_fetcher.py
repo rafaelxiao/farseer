@@ -14,8 +14,8 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 
-from farseer.fetchers.base import BaseFetcher
-from farseer.fetchers.registry import FetcherRegistry
+from farseer.sources.base import BaseFetcher
+from farseer.sources.registry import FetcherRegistry
 from farseer.schemas.ohlc import OHLCBase
 
 

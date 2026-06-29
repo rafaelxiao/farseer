@@ -20,7 +20,7 @@ async def start_fetch(
 
     - **symbols**: Specific symbols to fetch (comma-separated). Empty for all universe symbols.
     """
-    from farseer.scheduler.jobs import daily_fetch_job
+    from farseer.jobs.jobs import daily_fetch_job
     
     # Run in background
     background_tasks.add_task(daily_fetch_job)

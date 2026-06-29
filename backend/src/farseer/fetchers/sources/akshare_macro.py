@@ -281,6 +281,140 @@ def fetch_us_nonfarm() -> list[MacroBase]:
         return []
 
 
+# ── Additional China Indicators ──
+
+def fetch_rrr() -> list[MacroBase]:
+    """China Reserve Requirement Ratio."""
+    try:
+        df = ak.macro_china_reserve_requirement_ratio()
+        if df is None or len(df) == 0:
+            return []
+        # Columns: 公布时间, 生效时间, 大型金融机构-调整后, ...
+        records = []
+        for _, row in df.iterrows():
+            d = _parse_date(row.get("生效时间"))
+            v = _safe_float(row.get("大型金融机构-调整后"))
+            if d is not None and v is not None:
+                records.append(MacroBase(symbol="RRR.CN", data_source=DataSource.akshare, date=d, value=v))
+        logger.info(f"RRR: {len(records)} records")
+        return records
+    except Exception as e:
+        logger.error(f"RRR failed: {e}")
+        return []
+
+
+def fetch_trade_balance() -> list[MacroBase]:
+    """China Trade Balance (亿美元)."""
+    try:
+        df = ak.macro_china_trade_balance()
+        if df is None or len(df) == 0:
+            return []
+        records = _standard_extract(df, "TRADE_BALANCE.CN")
+        logger.info(f"Trade Balance: {len(records)} records")
+        return records
+    except Exception as e:
+        logger.error(f"Trade Balance failed: {e}")
+        return []
+
+
+def fetch_industrial_production() -> list[MacroBase]:
+    """China Industrial Production YoY%."""
+    try:
+        df = ak.macro_china_industrial_production_yoy()
+        if df is None or len(df) == 0:
+            return []
+        records = _standard_extract(df, "INDUSTRIAL_PROD.CN")
+        logger.info(f"Industrial Production: {len(records)} records")
+        return records
+    except Exception as e:
+        logger.error(f"Industrial Production failed: {e}")
+        return []
+
+
+def fetch_social_financing() -> list[MacroBase]:
+    """China Social Financing (亿元)."""
+    try:
+        df = ak.macro_china_new_financial_credit()
+        if df is None or len(df) == 0:
+            return []
+        # Columns: 月份, 当月, 当月-同比增长, ...
+        records = []
+        for _, row in df.iterrows():
+            d = _parse_date(row.get("月份"))
+            v = _safe_float(row.get("当月"))
+            if d is not None and v is not None:
+                records.append(MacroBase(symbol="SOCIAL_FIN.CN", data_source=DataSource.akshare, date=d, value=v))
+        logger.info(f"Social Financing: {len(records)} records")
+        return records
+    except Exception as e:
+        logger.error(f"Social Financing failed: {e}")
+        return []
+
+
+def fetch_urban_unemployment() -> list[MacroBase]:
+    """China Urban Unemployment Rate."""
+    try:
+        df = ak.macro_china_urban_unemployment()
+        if df is None or len(df) == 0:
+            return []
+        records = _standard_extract(df, "UNEMPLOY.CN")
+        logger.info(f"Urban Unemployment: {len(records)} records")
+        return records
+    except Exception as e:
+        logger.error(f"Urban Unemployment failed: {e}")
+        return []
+
+
+# ── Additional US Indicators ──
+
+def fetch_us_core_cpi() -> list[MacroBase]:
+    """US Core CPI (ex food & energy)."""
+    try:
+        df = ak.macro_usa_core_cpi_monthly()
+        records = _standard_extract(df, "CORE_CPI.US")
+        logger.info(f"US Core CPI: {len(records)} records")
+        return records
+    except Exception as e:
+        logger.error(f"US Core CPI failed: {e}")
+        return []
+
+
+def fetch_us_retail() -> list[MacroBase]:
+    """US Retail Sales."""
+    try:
+        df = ak.macro_usa_retail_sales()
+        records = _standard_extract(df, "RETAIL.US")
+        logger.info(f"US Retail: {len(records)} records")
+        return records
+    except Exception as e:
+        logger.error(f"US Retail failed: {e}")
+        return []
+
+
+def fetch_us_ism_pmi() -> list[MacroBase]:
+    """US ISM Manufacturing PMI."""
+    try:
+        df = ak.macro_usa_ism_pmi()
+        records = _standard_extract(df, "ISM_PMI.US")
+        logger.info(f"US ISM PMI: {len(records)} records")
+        return records
+    except Exception as e:
+        logger.error(f"US ISM PMI failed: {e}")
+        return []
+
+
+def fetch_us_ppi() -> list[MacroBase]:
+    """US PPI."""
+    try:
+        df = ak.macro_usa_ppi()
+        records = _standard_extract(df, "PPI.US")
+        logger.info(f"US PPI: {len(records)} records")
+        return records
+    except Exception as e:
+        logger.error(f"US PPI failed: {e}")
+        return []
+
+
 # ── Entry Point ──
 # To add new indicators:
 # 1. Add a fetch_xxx() function above
@@ -297,11 +431,20 @@ FETCHERS = [
     fetch_lpr,
     fetch_fx,
     fetch_foreign_reserves,
+    fetch_rrr,
+    fetch_trade_balance,
+    fetch_industrial_production,
+    fetch_social_financing,
+    fetch_urban_unemployment,
     # US
     fetch_us_cpi,
+    fetch_us_core_cpi,
     fetch_us_rate,
     fetch_us_unemployment,
     fetch_us_nonfarm,
+    fetch_us_retail,
+    fetch_us_ism_pmi,
+    fetch_us_ppi,
 ]
 
 

@@ -20,15 +20,24 @@ const INDICATOR_META: Record<string, { label: string; color: string; desc: strin
   "FEDFUNDS.US": { label: "Fed Funds Rate", color: "#1e40af", desc: "US Federal Funds Rate", unit: "%" },
   "UNEMPLOYMENT.US": { label: "Unemployment (US)", color: "#7c3aed", desc: "US Unemployment Rate", unit: "%" },
   "NONFARM.US": { label: "Non-Farm (US)", color: "#059669", desc: "US Non-Farm Payrolls", unit: "K" },
+  "CORE_CPI.US": { label: "Core CPI (US)", color: "#b91c1c", desc: "US Core CPI (ex food/energy)", unit: "" },
+  "RETAIL.US": { label: "Retail (US)", color: "#0ea5e9", desc: "US Retail Sales MoM%", unit: "%" },
+  "ISM_PMI.US": { label: "ISM PMI (US)", color: "#ca8a04", desc: "US ISM Manufacturing PMI", unit: "" },
+  "PPI.US": { label: "PPI (US)", color: "#d97706", desc: "US Producer Price Index", unit: "%" },
+  "RRR.CN": { label: "RRR (China)", color: "#7c3aed", desc: "PBOC Reserve Requirement Ratio", unit: "%" },
+  "TRADE_BALANCE.CN": { label: "Trade Balance", color: "#2563eb", desc: "China Trade Balance ($100M)", unit: "" },
+  "INDUSTRIAL_PROD.CN": { label: "Industrial Prod", color: "#9333ea", desc: "China Industrial Production YoY%", unit: "%" },
+  "SOCIAL_FIN.CN": { label: "Social Financing", color: "#0891b2", desc: "China Social Financing (100M CNY)", unit: "" },
+  "UNEMPLOY.CN": { label: "Unemploy (CN)", color: "#4f46e5", desc: "China Urban Unemployment Rate", unit: "%" },
 }
 
 // Group indicators by country
 const INDICATOR_GROUPS: { label: string; symbols: string[] }[] = [
   { label: "💰 China Prices", symbols: ["CPI.CN", "PPI.CN"] },
-  { label: "🏭 China Activity", symbols: ["PMI.CN", "GDP.CN"] },
-  { label: "💵 China Monetary", symbols: ["M2.CN", "LPR1Y.CN", "LPR5Y.CN"] },
-  { label: "🌐 China FX", symbols: ["FX_USDCNY", "FX_RESERVES.CN"] },
-  { label: "🇺🇸 US Macro", symbols: ["CPI.US", "FEDFUNDS.US", "UNEMPLOYMENT.US", "NONFARM.US"] },
+  { label: "🏭 China Activity", symbols: ["PMI.CN", "GDP.CN", "INDUSTRIAL_PROD.CN", "TRADE_BALANCE.CN"] },
+  { label: "💵 China Monetary", symbols: ["M2.CN", "LPR1Y.CN", "LPR5Y.CN", "RRR.CN", "SOCIAL_FIN.CN"] },
+  { label: "🌐 China FX & Jobs", symbols: ["FX_USDCNY", "FX_RESERVES.CN", "UNEMPLOY.CN"] },
+  { label: "🇺🇸 US Macro", symbols: ["CPI.US", "CORE_CPI.US", "PPI.US", "FEDFUNDS.US", "UNEMPLOYMENT.US", "NONFARM.US", "RETAIL.US", "ISM_PMI.US"] },
 ]
 
 function formatValue(value: number): string {
@@ -57,11 +66,16 @@ export default function MacroViewer() {
     staleTime: 5 * 60 * 1000,
   })
 
-  // Sort records by date ascending (for chart)
+  // Sort records chronologically ascending (for chart)
   const sortedRecords = useMemo(() => {
     if (!records) return []
     return [...records].sort((a, b) => a.date.localeCompare(b.date))
   }, [records])
+
+  // Sort descending (most recent first) for table
+  const tableRecords = useMemo(() => {
+    return [...sortedRecords].reverse()
+  }, [sortedRecords])
 
   // Transform to FundamentalChart format
   const chartData = useMemo(() => {
@@ -245,21 +259,21 @@ export default function MacroViewer() {
             )
           ) : (
             <div className="overflow-x-auto">
-              {sortedRecords.length > 0 ? (
+              {tableRecords.length > 0 ? (
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b">
                       <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground">Date</th>
                       <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground">Value</th>
-                      {sortedRecords[0]?.data &&
-                        Object.keys(sortedRecords[0].data).length > 0 && (
+                      {tableRecords[0]?.data &&
+                        Object.keys(tableRecords[0].data).length > 0 && (
                           <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground">Extra</th>
                         )}
                       <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground">Source</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {sortedRecords.reverse().map((r) => (
+                    {tableRecords.map((r) => (
                       <tr key={r.id} className="border-b last:border-0 hover:bg-muted/50">
                         <td className="py-2 px-3 font-mono">{r.date}</td>
                         <td className="py-2 px-3 text-right font-mono">{formatValue(r.value)}</td>

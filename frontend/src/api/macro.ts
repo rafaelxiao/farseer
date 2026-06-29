@@ -21,12 +21,14 @@ export const macroApi = {
 
   query: (
     symbol?: string,
+    dataSource?: string,
     startDate?: string,
     endDate?: string,
     limit?: number,
   ) => {
     const params = new URLSearchParams()
     if (symbol) params.set("symbol", symbol)
+    if (dataSource) params.set("data_source", dataSource)
     if (startDate) params.set("start_date", startDate)
     if (endDate) params.set("end_date", endDate)
     if (limit) params.set("limit", String(limit))

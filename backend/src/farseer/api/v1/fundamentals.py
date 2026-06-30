@@ -203,7 +203,7 @@ async def get_etf_nav_history(
 ):
     """Get ETF historical NAV and calculate premium/discount."""
     import tushare as ts
-    from farseer.utils.tushare import get_tushare_pro
+    from farseer.sources.tushare.client import get_tushare_pro
     
     pro = get_tushare_pro()
     

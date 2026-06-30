@@ -25,7 +25,7 @@ from datetime import datetime, date
 from farseer.database import async_session_factory
 from farseer.models.fundamentals import Fundamentals
 from farseer.config import settings
-from farseer.universe import is_etf
+from farseer.data.universe import is_etf
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +35,7 @@ _executor = ThreadPoolExecutor(max_workers=2)
 def _fetch_stock_fundamentals(symbol: str) -> list[dict]:
     """Fetch stock fundamental data from tushare."""
     import tushare as ts
-    from farseer.utils.tushare import get_tushare_pro
+    from farseer.sources.tushare.client import get_tushare_pro
 
     pro = get_tushare_pro()
 
@@ -200,7 +200,7 @@ def _fetch_stock_fundamentals(symbol: str) -> list[dict]:
 def _fetch_etf_fundamentals(symbol: str) -> list[dict]:
     """Fetch ETF fundamental data from tushare."""
     import tushare as ts
-    from farseer.utils.tushare import get_tushare_pro
+    from farseer.sources.tushare.client import get_tushare_pro
 
     pro = get_tushare_pro()
 

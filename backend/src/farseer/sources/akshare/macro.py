@@ -16,7 +16,7 @@ from typing import Optional
 import akshare as ak
 import pandas as pd
 
-from farseer.datasource import DataSource
+from farseer.sources.datasource import DataSource
 from farseer.schemas.macro import MacroBase
 
 logger = logging.getLogger(__name__)

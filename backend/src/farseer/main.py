@@ -10,8 +10,12 @@ from farseer.config import settings
 from farseer.jobs.runner import start_scheduler, shutdown_scheduler
 from farseer.database import async_session_factory
 
-# Import to register fetchers
-import farseer.sources  # noqa: F401
+# Import to register fetchers (avoids circular imports in sources/__init__.py)
+import farseer.sources.tushare  # noqa: F401
+import farseer.sources.akshare  # noqa: F401
+import farseer.sources.baostock  # noqa: F401
+import farseer.sources.yfinance  # noqa: F401
+import farseer.sources.binance  # noqa: F401
 
 
 class APIKeyMiddleware(BaseHTTPMiddleware):

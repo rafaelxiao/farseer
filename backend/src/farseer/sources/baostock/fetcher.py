@@ -52,7 +52,7 @@ class BaostockFetcher(BaseFetcher):
         start: str | None = None, end: str | None = None,
     ) -> list[dict]:
         import baostock as bs
-        from farseer.universe import is_etf
+        from farseer.data.universe import is_etf
 
         bs_symbol = _to_baostock_symbol(symbol)
         frequency = TIMEFRAME_MAP.get(timeframe, "d")

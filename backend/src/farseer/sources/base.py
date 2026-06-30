@@ -4,14 +4,19 @@ Base fetcher interface.
 All data source fetchers inherit from this class and implement the abstract methods.
 """
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from farseer.database import async_session_factory
-from farseer.schemas.ohlc import OHLCBase
+
+if TYPE_CHECKING:
+    from farseer.schemas.ohlc import OHLCBase
 
 
 @dataclass
@@ -101,6 +106,6 @@ class BaseFetcher(ABC):
 
     def validate_symbol(self, symbol: str) -> bool:
         """Check if symbol is supported by this source."""
-        from farseer.universe import SymbolFormat
+        from farseer.data.universe import SymbolFormat
         code, exchange = SymbolFormat.parse(symbol)
         return exchange.value in self.supported_exchanges

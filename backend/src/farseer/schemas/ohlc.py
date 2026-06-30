@@ -3,7 +3,7 @@ from typing import Any
 
 from pydantic import BaseModel, field_validator
 
-from farseer.datasource import DataSource
+from farseer.sources.datasource import DataSource
 
 
 class OHLCBase(BaseModel):

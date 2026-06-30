@@ -12,8 +12,8 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from chinese_calendar import is_workday
 
-from farseer.universe import CSI300, CSI500, ETF_TOP100, INDICES
-from farseer.sources.akshare_macro import fetch_all_macro
+from farseer.data.universe import CSI300, CSI500, ETF_TOP100, INDICES
+from farseer.sources.akshare.macro import fetch_all_macro
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ def get_all_symbols() -> list[str]:
 
 def split_by_type(symbols: list[str]) -> tuple[list[str], list[str]]:
     """Split symbols into stocks and ETFs."""
-    from farseer.universe import is_etf
+    from farseer.data.universe import is_etf
     stocks = [s for s in symbols if not is_etf(s)]
     etfs = [s for s in symbols if is_etf(s)]
     return stocks, etfs
@@ -78,7 +78,7 @@ def fetch_ohlc(pro, conn, cur, symbols: list[str]) -> tuple[int, int]:
     """Fetch OHLC data for symbols. Returns (success, failed)."""
     logger.info(f"=== Fetching OHLC data (last 3 days) for {len(symbols)} symbols ===")
     
-    from farseer.universe import is_etf
+    from farseer.data.universe import is_etf
     
     end_date = datetime.now().strftime("%Y%m%d")
     start_date = (datetime.now() - timedelta(days=4)).strftime("%Y%m%d")
@@ -380,7 +380,7 @@ def daily_fetch_job():
         return
     
     # Setup tushare
-    from farseer.utils.tushare import get_tushare_pro
+    from farseer.sources.tushare.client import get_tushare_pro
     pro = get_tushare_pro()
     
     # Validate token first

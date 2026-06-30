@@ -22,8 +22,8 @@ from farseer.sources.base import BaseFetcher
 from farseer.sources.registry import FetcherRegistry
 from farseer.schemas.ohlc import OHLCBase
 from farseer.config import settings
-from farseer.universe import is_etf
-from farseer.universe import INDICES
+from farseer.data.universe import is_etf
+from farseer.data.universe import INDICES
 
 
 _executor = ThreadPoolExecutor(max_workers=2)
@@ -37,7 +37,7 @@ class TushareFetcher(BaseFetcher):
 
     def _fetch_stock(self, ts_code: str, start_date: str, end_date: str) -> list[dict]:
         """Fetch stock data: 后复权 = daily_price × adj_factor (normalized)."""
-        from farseer.utils.tushare import get_tushare_pro
+        from farseer.sources.tushare.client import get_tushare_pro
 
         pro = get_tushare_pro()
 
@@ -85,7 +85,7 @@ class TushareFetcher(BaseFetcher):
         ETFs store actual prices (not 后复权). backward_factor is metadata only.
         """
         import tushare as ts
-        from farseer.utils.tushare import get_tushare_pro
+        from farseer.sources.tushare.client import get_tushare_pro
 
         pro = get_tushare_pro()
 
@@ -126,7 +126,7 @@ class TushareFetcher(BaseFetcher):
 
     def _fetch_index(self, ts_code: str, start_date: str, end_date: str) -> list[dict]:
         """Fetch index data using index_daily. No adjustment factor."""
-        from farseer.utils.tushare import get_tushare_pro
+        from farseer.sources.tushare.client import get_tushare_pro
 
         pro = get_tushare_pro()
 

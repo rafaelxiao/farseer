@@ -1,4 +1,5 @@
 import json
+import math
 from datetime import date, datetime
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -113,17 +114,18 @@ async def get_valuation_history(
         raise HTTPException(status_code=404, detail=f"No OHLC data found for {symbol}")
     
     # Get quarterly financial data (EPS, BPS, Revenue per share)
+    # Query both Tushare (income, financial_indicator) and AKShare (indicators)
     fin_query = """
         SELECT date, category, data
         FROM fundamentals
-        WHERE symbol = :symbol AND category IN ('income', 'financial_indicator')
+        WHERE symbol = :symbol AND category IN ('income', 'financial_indicator', 'indicators')
         ORDER BY date
     """
     fin_result = await db.execute(text(fin_query), {"symbol": symbol})
     fin_rows = fin_result.fetchall()
     
     # Build quarterly data lookup
-    quarterly = {}  # date -> {eps, bps, rps, revenue, net_income_yoy}
+    quarterly = {}  # date -> {eps, bps, rps, revenue, net_income, net_income_yoy}
     for row in fin_rows:
         d = json.loads(row[2])
         q_date = row[0]
@@ -136,7 +138,13 @@ async def get_valuation_history(
         elif row[1] == 'financial_indicator':
             quarterly[q_date]['bps'] = d.get('bps')
             quarterly[q_date]['net_income_yoy'] = d.get('net_income_yoy')
-            quarterly[q_date]['revenue_yoy'] = d.get('revenue_yoy')
+        elif row[1] == 'indicators':
+            # AKShare indicators — use basic_eps, revenue, net_income, bps, etc.
+            if 'basic_eps' in d: quarterly[q_date]['eps'] = d['basic_eps']
+            if 'bps' in d: quarterly[q_date]['bps'] = d['bps']
+            if 'revenue' in d: quarterly[q_date]['revenue'] = d['revenue']
+            if 'net_income' in d: quarterly[q_date]['net_income'] = d['net_income']
+            if 'net_income_yoy' in d: quarterly[q_date]['net_income_yoy'] = d['net_income_yoy']
     
     # Sort quarterly dates
     q_dates = sorted(quarterly.keys())
@@ -163,11 +171,15 @@ async def get_valuation_history(
         
         # PE = Price / EPS (annualized)
         if latest_q.get('eps') and latest_q['eps'] > 0:
-            val_data['pe'] = round(actual_price / latest_q['eps'], 2)
+            pe = actual_price / latest_q['eps']
+            if not math.isnan(pe) and pe > 0:
+                val_data['pe'] = round(pe, 2)
         
         # PB = Price / BPS
         if latest_q.get('bps') and latest_q['bps'] > 0:
-            val_data['pb'] = round(actual_price / latest_q['bps'], 2)
+            pb = actual_price / latest_q['bps']
+            if not math.isnan(pb) and 0 < pb < 1e9:
+                val_data['pb'] = round(pb, 2)
         
         # PS = Price / Revenue Per Share (annualized)
         # Revenue Per Share = Revenue / Shares (Shares = Market Cap / Price)
@@ -189,6 +201,8 @@ async def get_valuation_history(
         if val_data.get('pe') and latest_q.get('net_income_yoy') and latest_q['net_income_yoy'] > 0:
             val_data['peg'] = round(val_data['pe'] / latest_q['net_income_yoy'], 2)
         
+        # Strip NaN/Inf values before appending
+        val_data = {k: v for k, v in val_data.items() if not (isinstance(v, float) and (math.isnan(v) or math.isinf(v)))}
         result.append(val_data)
     
     return {"symbol": symbol, "data": result}

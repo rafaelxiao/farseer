@@ -59,6 +59,7 @@ export const fundamentalsApi = {
     const searchParams = new URLSearchParams()
     if (startDate) searchParams.set("start_date", startDate)
     if (endDate) searchParams.set("end_date", endDate)
+    searchParams.set("periods", "200")
     return api.get<FundamentalSummary>(`/fundamentals/summary/${symbol}?${searchParams}`)
   },
 

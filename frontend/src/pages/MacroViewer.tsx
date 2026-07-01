@@ -2,7 +2,7 @@ import { useState, useMemo } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { macroApi, type MacroRecord } from "@/api/macro"
+import { macroApi } from "@/api/macro"
 import FundamentalChart from "@/components/shared/FundamentalChart"
 
 // Indicator metadata: label, color for chart, description
@@ -62,7 +62,7 @@ export default function MacroViewer() {
   // Fetch data for selected indicator
   const { data: records } = useQuery({
     queryKey: ["macro-data", selectedSymbol, startDate, endDate],
-    queryFn: () => macroApi.query(selectedSymbol, startDate || undefined, endDate || undefined, 2000),
+    queryFn: () => macroApi.query(selectedSymbol, undefined, startDate || undefined, endDate || undefined, 2000),
     enabled: !!selectedSymbol,
     staleTime: 5 * 60 * 1000,
   })

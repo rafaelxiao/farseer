@@ -196,9 +196,9 @@ export default function OHLCViewer() {
           {isDataLoading ? (
             <div className="flex items-center justify-center h-[400px] text-muted-foreground">Loading...</div>
           ) : viewMode === "chart" ? (
-            <OHLCChart data={chartData} height={450} colors={colors} logScale={logScale} maPeriods={maPeriods} />
+            <OHLCChart data={chartData as any} height={450} colors={colors} logScale={logScale} maPeriods={maPeriods} />
           ) : (
-            <OHLCDataTable data={chartData} />
+            <OHLCDataTable data={chartData as any} />
           )}
         </CardContent>
       </Card>

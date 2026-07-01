@@ -131,8 +131,14 @@ class OHLCService:
         adjust: str,
         data_source: str,
     ) -> list[dict]:
-        """Fetch OHLC for a single symbol."""
-        # Get latest backward_factor FIRST (for forward conversion)
+        """Fetch OHLC for a single symbol.
+
+        Stored data: raw prices with per-date backward_factor.
+        - backward (后复权): raw × bf
+        - forward (前复权): raw × latest_bf
+        - original/actual: raw prices (actual market prices)
+        """
+        # Get latest backward_factor for forward adjustment
         latest_query = (
             select(OHLC.backward_factor)
             .where(OHLC.symbol == symbol, OHLC.data_source == data_source, OHLC.timeframe == timeframe)
@@ -211,28 +217,30 @@ class OHLCService:
             l = safe_float(row.low)
             c = safe_float(row.close)
 
-            if adjust in ("backward", "original"):
+            if adjust in ("original", "actual"):
+                # Raw prices (actual market prices)
                 record.update({"open": o, "high": h, "low": l, "close": c})
 
-            elif adjust == "forward":
-                factor = latest_backward_factor / bf if bf else 1.0
+            elif adjust == "backward":
+                # 后复权: raw × backward_factor
                 record.update({
-                    "open": o * factor,
-                    "high": h * factor,
-                    "low": l * factor,
-                    "close": c * factor,
+                    "open": o * bf,
+                    "high": h * bf,
+                    "low": l * bf,
+                    "close": c * bf,
                 })
 
-            elif adjust == "actual":
+            elif adjust == "forward":
+                # 前复权: raw × latest_backward_factor
                 record.update({
-                    "open": o / bf if bf else o,
-                    "high": h / bf if bf else h,
-                    "low": l / bf if bf else l,
-                    "close": c / bf if bf else c,
+                    "open": o * latest_backward_factor,
+                    "high": h * latest_backward_factor,
+                    "low": l * latest_backward_factor,
+                    "close": c * latest_backward_factor,
                 })
 
             else:
-                raise ValueError(f"Unknown adjust: {adjust}. Use 'backward', 'forward', or 'actual'")
+                raise ValueError(f"Unknown adjust: {adjust}. Use 'backward', 'forward', or 'original'")
 
             records.append(record)
 

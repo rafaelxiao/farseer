@@ -7,9 +7,10 @@ import SymbolSearch from "@/components/shared/SymbolSearch"
 import FundamentalChart from "@/components/shared/FundamentalChart"
 
 const STOCK_CATEGORIES = [
+  { key: "indicators", label: "Indicators", icon: "📈" },
   { key: "income", label: "Income", icon: "💰" },
   { key: "balance_sheet", label: "Balance Sheet", icon: "📊" },
-  { key: "financial_indicator", label: "Indicators", icon: "📈" },
+  { key: "financial_indicator", label: "Indicators (Tushare)", icon: "📉" },
   { key: "valuation", label: "Valuation", icon: "💎" },
 ]
 
@@ -18,7 +19,7 @@ const CHARTABLE_METRICS = [
   { key: "roa", label: "ROA (%)", color: "#3b82f6" },
   { key: "net_margin", label: "Net Margin (%)", color: "#f59e0b" },
   { key: "gross_margin", label: "Gross Margin (%)", color: "#8b5cf6" },
-  { key: "eps", label: "EPS", color: "#ef4444" },
+  { key: "basic_eps", label: "EPS", color: "#ef4444" },
   { key: "debt_to_assets", label: "Debt/Assets (%)", color: "#6366f1" },
   { key: "revenue_yoy", label: "Revenue YoY (%)", color: "#06b6d4" },
   { key: "net_income_yoy", label: "Profit YoY (%)", color: "#ec4899" },
@@ -131,7 +132,7 @@ export default function FundamentalsViewer() {
   const chartMetrics = useMemo(() => {
     if (activeTab === "income") return INCOME_METRICS
     if (activeTab === "balance_sheet") return BALANCE_METRICS
-    if (activeTab === "financial_indicator") return CHARTABLE_METRICS
+    if (activeTab === "indicators" || activeTab === "financial_indicator") return CHARTABLE_METRICS
     if (activeTab === "valuation") return VALUATION_METRICS
     return []
   }, [activeTab])
